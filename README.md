@@ -72,13 +72,9 @@ endmenu
 
 ```
 
-Refer to [support/build/Kconfig](support/build/Kconfig) for an example
-of how to include `libsel4osapi` in your build configuration.
-
-
 In order to trigger the compilation of `libsel4osapi` and include the library
 in your final system image, you must modify you application's `Kbuild` file
-so that it includes `sel4osapi` in its list of dependencies, e.g.:
+so that it includes `libsel4osapi` in its list of dependencies, e.g.:
 
 ```makefile
 
