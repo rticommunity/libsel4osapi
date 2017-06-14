@@ -1,0 +1,211 @@
+#
+# FILE: Kconfig - sel4osapi Kconfig file
+#
+# Copyright (c) 2015, Real-Time Innovations, Inc. All rights reserved.
+#
+# This software may be distributed and modified according to the terms of
+# the BSD 2-Clause license. Note that NO WARRANTY is provided.
+# See "LICENSE_BSD2.txt" for details.
+#
+
+
+menuconfig LIB_OSAPI
+    bool "seL4 OSAPI"
+    default y
+    depends on LIB_SEL4_MUSLC_SYS && LIB_SEL4 && LIB_MUSL_C && LIB_SEL4_UTILS && LIB_SEL4_VSPACE && LIB_CPIO
+    help
+        Minimal OS API for seL4
+
+#menuconfig LIB_OSAPI_PROCESS
+#    bool "Process support"
+#    default y
+#    depends on LIB_OSAPI
+#    help
+#        Process and thread API
+        
+menu "Process and thread support"
+	depends on LIB_OSAPI
+
+	config LIB_OSAPI_MAX_USER_PROCESSES
+	    int "Max user processes"
+	    depends on LIB_OSAPI
+	    default 5
+	    help
+	        Maximum number of processes that can be spawned by root-task
+	
+	config LIB_OSAPI_BOOTSTRAP_MEM_POOL_SIZE
+	    int "Bootstrap static buffer size"
+	    depends on LIB_OSAPI
+	    default 40960
+	    help
+	        Size of static buffer that will be used to bootstrap the system
+	
+	config LIB_OSAPI_SYSTEM_VMEM_SIZE
+	    int "Root malloc vmem size"
+	    depends on LIB_OSAPI
+	    default 67108864
+	    help
+	        Amount of virtual memory allocated to the root-task's malloc() (default 64MB)
+	
+	config LIB_OSAPI_VKA_VMEM_SIZE
+	    int "Root vka vmem size"
+	    depends on LIB_OSAPI
+	    default 67108864
+	    help
+	        Amount of virtual memory allocated to the root-task's vka (default 64MB)
+	
+	config LIB_OSAPI_ROOT_UNTYPED_MEM_SIZE
+	    int "Root untyped memory size"
+	    depends on LIB_OSAPI
+	    default 67108864
+	    help
+	        Amount of untyped memory reserved for to the root task (default 64MB)
+	
+	config LIB_OSAPI_USER_UNTYPED_MEM_SIZE
+	    int "User untyped memory size"
+	    depends on LIB_OSAPI
+	    default 67108864
+	    help
+	        Amount of untyped memory reserved to each user process (default 64MB)
+	
+	config LIB_OSAPI_USER_PRIORITY
+	    int "User process priority"
+	    depends on LIB_OSAPI
+	    default 100
+	    help
+	        Default priority at which user processes will be started
+	
+	config LIB_OSAPI_MAX_THREADS_PER_PROCESS
+	    int "Max threads per process"
+	    depends on LIB_OSAPI
+	    default 50
+	    help
+	        Maximum number of threads that can be created by a user process.
+	
+	config LIB_OSAPI_THREAD_MAX_NAME
+	    int "Max thread name"
+	    depends on LIB_OSAPI
+	    default 50
+	    help
+	        Max length of thread name
+	
+	config LIB_OSAPI_IPC_RX_BUF_SIZE
+    	int "IPC RX buffer size"
+    	depends on LIB_OSAPI
+    	default 16384
+    	help
+        	Size of RX buffer allocate to each user process (default 16k)
+
+	config LIB_OSAPI_IPC_TX_BUF_SIZE
+    	int "IPC TX buffer size"
+    	depends on LIB_OSAPI
+    	default 16384
+    	help
+        	Size of TX buffer allocate to each user process (default 16k)
+endmenu
+
+
+menuconfig LIB_OSAPI_SYSCLOCK
+    bool "System clock support"
+    default y
+    depends on LIB_OSAPI
+    help
+        System clock support
+
+config LIB_OSAPI_SYSCLOCK_PERIOD
+    int "Clock period"
+    depends on LIB_OSAPI_SYSCLOCK
+    default 5
+    help
+        Period of the system clock in milliseconds
+
+menuconfig LIB_OSAPI_NET
+    bool "Networking support"
+    default y
+    depends on LIB_OSAPI && LIB_LWIP
+    help
+        Enable experimental support for UDP/IP networking. Requires lwip.
+
+#config LIB_OSAPI_NET_RX_BUF_SIZE
+#    int "Net RX buffer size"
+#    depends on LIB_OSAPI_NET
+#    default 16384
+#    help
+#        Size of RX buffer allocate to each user process (default 16k)
+
+#config LIB_OSAPI_NET_TX_BUF_SIZE
+#    int "Net TX buffer size"
+#    depends on LIB_OSAPI_NET
+#    default 16384
+#    help
+#        Size of TX buffer allocate to each user process (default 16k)
+
+config LIB_OSAPI_IP_ADDR
+    string "IP Address"
+    depends on LIB_OSAPI_NET
+    default "10.10.50.36"
+    help
+        IP address for the ethernet interface
+
+config LIB_OSAPI_IP_MASK
+    string "IP Netmask"
+    depends on LIB_OSAPI_NET
+    default "255.255.0.0"
+    help
+        IP netmask for the ethernet interface
+
+config LIB_OSAPI_IP_GW
+    string "IP GW"
+    depends on LIB_OSAPI_NET
+    default "10.10.0.1"
+    help
+        IP gateway for the ethernet interface
+
+config LIB_OSAPI_NET_VFACES_MAX
+    int "Max virtual interfaces"
+    depends on LIB_OSAPI_NET
+    default 2
+    help
+        Maximum number of virtual interfaces
+
+config LIB_OSAPI_NET_PHYS_MAX
+    int "Max NICs"
+    depends on LIB_OSAPI_NET
+    default 1
+    help
+        Maximum number of physical network interfaces
+
+config LIB_OSAPI_NET_NAME_MAX
+    int "Interface name length"
+    depends on LIB_OSAPI_NET
+    default 8
+    help
+        Maximum length of NIC name
+
+config LIB_OSAPI_NET_NAME
+    string "NIC name"
+    depends on LIB_OSAPI_NET
+    default "eth0"
+    help
+        Name of NIC
+
+menuconfig LIB_OSAPI_SERIAL
+    bool "Serial support"
+    default y
+    depends on LIB_OSAPI
+    help
+        Enable support for serial communication.
+
+config LIB_OSAPI_SERIAL_UART1
+    bool "Enable PS_SERIAL0"
+    depends on LIB_OSAPI_SERIAL
+    default y
+    help
+        If selected, the serial IO server will try to open the PS_SERIAL0 device
+
+config LIB_OSAPI_SERIAL_UART2
+    bool "Enable PS_SERIAL1"
+    depends on LIB_OSAPI_SERIAL
+    default y
+    help
+        If selected, the serial IO server will try to open the PS_SERIAL1 device

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<manifest>
+
+<remote name="seL4" fetch="https://github.com/sel4"/>
+<remote name="savannah" fetch="git://git.savannah.nongnu.org"/>
+<remote name="rti" fetch="localhost:/home/asorbini/workspace.security" />
+
+<default revision="1.0.x-compatible"
+         remote="seL4"/>
+
+<project name="seL4.git"                    path="kernel"
+         revision="refs/tags/1.0.4">
+    <linkfile src="libsel4"                 dest="libs/libsel4"/>
+</project>
+<project name="common-tool.git"             path="tools/common"/>
+<project name="kbuild-tool.git"             path="tools/kbuild"/>
+<project name="elfloader-tool.git"          path="tools/elfloader"/>
+<project name="musllibc.git"                path="libs/libmuslc"/>
+<project name="libsel4muslcsys.git"         path="libs/libsel4muslcsys"/>
+<project name="libsel4platsupport.git"      path="libs/libsel4platsupport"/>
+<project name="libsel4allocman.git"         path="libs/libsel4allocman"/>
+<project name="libsel4vka.git"              path="libs/libsel4vka"/>
+<project name="libsel4vspace.git"           path="libs/libsel4vspace"/>
+<project name="libsel4utils.git"            path="libs/libsel4utils"/>
+<project name="libcpio.git"                 path="libs/libcpio"/>
+<project name="libelf.git"                  path="libs/libelf"/>
+<project name="libsel4simple.git"           path="libs/libsel4simple"/>
+<project name="libsel4simple-default.git"   path="libs/libsel4simple-default"/>
+<project name="libsel4simple-stable.git"    path="libs/libsel4simple-stable"/>
+<project name="libplatsupport.git"          path="libs/libplatsupport"/>
+<project name="libutils.git"                path="libs/libutils"/>
+<project name="libsel4sync.git"             path="libs/libsel4sync"
+         revision="refs/tags/v1.0.0"/>
+<project name="libethdrivers"               path="libs/libethdrivers"
+         revision="master"/>
+
+<project name="libsel4osapi.git" remote="rti"
+          path="libs/libsel4osapi" revision="local">
+    <linkfile src="support/lib/lwip/include"    dest="libs/liblwip/include"/>
+    <linkfile src="support/lib/lwip/Kbuild"     dest="libs/liblwip/Kbuild"/>
+    <linkfile src="support/lib/lwip/Kconfig"    dest="libs/liblwip/Kconfig"/>
+    <linkfile src="support/lib/lwip/Makefile"   dest="libs/liblwip/Makefile"/>
+    <linkfile src="support/apps/root_task"      dest="apps/root_task"/>
+    <linkfile src="support/apps/hello_sel4"     dest="apps/hello_sel4"/>
+    <linkfile src="support/build/Makefile"      dest="Makefile"/>
+    <linkfile src="support/build/Kbuild"        dest="Kbuild"/>
+    <linkfile src="support/build/Kconfig"       dest="Kconfig"/>
+    <linkfile src="support/build/configs"       dest="configs"/>
+</project>
+
+<project name="lwip.git" path="libs/liblwip/lwip-1.4.1"
+    remote="savannah" revision="refs/tags/STABLE-1_4_1" />
+
+
+</manifest>
+
