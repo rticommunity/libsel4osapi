@@ -70,8 +70,6 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
 #endif
         int queued = 0;
         int wait_result = 0;
-        UNUSED seL4_MessageInfo_t minfo;
-
         int i = 0;
         for (i = 0; i < SEL4OSAPI_SEMAPHORE_QUEUE_SIZE && !queued; ++i) {
             if (semaphore->wait_queue[i] == seL4_CapNull)
@@ -96,7 +94,7 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
         assert(queued > 0);
         sel4osapi_mutex_unlock(semaphore->mutex);
 
-        minfo = seL4_Wait(current_thread->wait_aep, NULL);
+        seL4_Wait(current_thread->wait_aep, NULL);
         wait_result = sel4osapi_getMR(0);
 
         error = sel4osapi_mutex_lock(semaphore->mutex);
@@ -142,7 +140,12 @@ sel4osapi_semaphore_give(sel4osapi_semaphore_t* semaphore)
     for (i = 0; i < SEL4OSAPI_SEMAPHORE_QUEUE_SIZE; ++i) {
         if (semaphore->wait_queue[i] != seL4_CapNull)
         {
-            seL4_Notify(semaphore->wait_queue[i], WAIT_RESULT_OK);
+            seL4_SendWithMRs(semaphore->wait_queue[i], 
+                    seL4_MessageInfo_new(0, 0, 0, 1), 
+                    WAIT_RESULT_OK,
+                    seL4_Null,
+                    seL4_Null,
+                    seL4_Null);
         }
     }
 

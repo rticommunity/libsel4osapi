@@ -44,7 +44,7 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
     while (thread->active)
     {
             syslog_info("waiting for next request...");
-            minfo = seL4_Wait(server->server_ep, &sender_badge);
+            minfo = seL4_Recv(server->server_ep, &sender_badge);
             assert(seL4_MessageInfo_get_length(minfo) == 4);
             mr0 = seL4_GetMR(0);
             mr1 = seL4_GetMR(1);
@@ -216,7 +216,7 @@ sel4osapi_io_initialize(sel4osapi_serialserver_t *server, int priority)
     vka_t *vka = sel4osapi_system_get_vka();
     ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
 
-    error = sel4platsupport_new_io_ops(*simple, *vspace, *vka, io_ops);
+    error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
     assert(error == 0);
     error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
     assert(error == 0);

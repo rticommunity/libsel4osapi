@@ -38,7 +38,7 @@ sel4osapi_thread_create(
     error = vka_alloc_endpoint(vka, &thread->local_endpoint);
     assert(error == 0);
 
-    error = vka_alloc_async_endpoint(vka, &thread->thread_aep);
+    error = vka_alloc_notification(vka, &thread->thread_aep);
     assert(error == 0);
 
 
@@ -82,7 +82,7 @@ sel4osapi_thread_delete(sel4osapi_thread_t *thread)
 }
 
 
-void sel4osapi_thread_routine_wrapper(void *arg1, void *arg2) {
+void sel4osapi_thread_routine_wrapper(void *arg1, void *arg2, UNUSED void *ipc_buf) {
     sel4osapi_thread_t *thread = (sel4osapi_thread_t *) arg1;
 
     sel4osapi_thread_init_tls(thread);

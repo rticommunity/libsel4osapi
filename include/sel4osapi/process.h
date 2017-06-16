@@ -192,6 +192,6 @@ sel4osapi_process_signal_root(sel4osapi_process_env_t *process, int exit_code);
  * badge corresponding to the process' pid.
  */
 seL4_CPtr
-sel4osapi_process_copy_cap_into(sel4osapi_process_t *process, vka_t *parent_vka, seL4_CPtr cap, seL4_CapRights rights);
+sel4osapi_process_copy_cap_into(sel4osapi_process_t *process, vka_t *parent_vka, seL4_CPtr cap, seL4_CapRights_t rights);
 
 #endif /* SEL4OSAPI_PROCESS_H_ */

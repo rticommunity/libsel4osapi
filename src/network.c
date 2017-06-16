@@ -128,14 +128,14 @@ sel4osapi_network_create_interface(sel4osapi_netstack_t *net, char *name, sel4os
         assert(error == 0);
         vka_cspace_make_path(vka, iface->irq, &irq_path);
 
-        error = simple_get_IRQ_control(simple, iface->driver->irq_num, irq_path);
+        error = simple_get_IRQ_handler(simple, iface->driver->irq_num, irq_path);
         assert(error == 0);
 
-        error = vka_alloc_async_endpoint(vka, &irq_aep_obj);
+        error = vka_alloc_notification(vka, &irq_aep_obj);
         assert(error == 0);
 
         iface->irq_aep = irq_aep_obj.cptr;
-        error = seL4_IRQHandler_SetEndpoint(irq_path.capPtr, iface->irq_aep);
+        error = seL4_IRQHandler_SetNotification(irq_path.capPtr, iface->irq_aep);
         assert(error == 0);
     }
 
@@ -188,7 +188,7 @@ sel4osapi_network_initialize(sel4osapi_netstack_t *net, sel4osapi_ipcserver_t *i
         ipaddr_aton(SEL4OSAPI_IP_ADDR_DEFAULT,  &addr);
         ipaddr_aton(SEL4OSAPI_IP_MASK_DEFAULT, &mask);
         syslog_info_a("adding virtual inteface: addr=%s, mask=%s, gw=%s", SEL4OSAPI_IP_ADDR_DEFAULT, SEL4OSAPI_IP_MASK_DEFAULT, SEL4OSAPI_IP_GW_DEFAULT);
-        error = sel4osapi_netiface_add_vface(iface, &addr, &mask, &gw, TRUE);
+        error = sel4osapi_netiface_add_vface(iface, &addr, &mask, &gw, seL4_True);
         assert(error == 0);
     }
 

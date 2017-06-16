@@ -18,20 +18,22 @@
 sel4osapi_mutex_t*
 sel4osapi_mutex_create()
 {
+    seL4_MessageInfo_t msg = seL4_MessageInfo_new(0, 0, 0, 1);
     sel4osapi_mutex_t *mutex = NULL;
     vka_t *vka = sel4osapi_system_get_vka();
     int error = 0;
 
     mutex = (sel4osapi_mutex_t*) sel4osapi_heap_allocate(sizeof(sel4osapi_mutex_t));
 
-    error = vka_alloc_async_endpoint(vka, &mutex->aep);
+    error = vka_alloc_notification(vka, &mutex->aep);
     assert(error == 0);
 
     mutex->held = 0;
     mutex->owner = NULL;
 
     /* Prime the endpoint. */
-    seL4_Notify(mutex->aep.cptr, WAIT_RESULT_OK);
+    seL4_SetMR(0, WAIT_RESULT_OK);
+    seL4_Send(mutex->aep.cptr, msg);
 
     return mutex;
 }
@@ -74,6 +76,7 @@ sel4osapi_mutex_lock(sel4osapi_mutex_t *mutex) {
 
 int
 sel4osapi_mutex_unlock(sel4osapi_mutex_t *mutex) {
+    seL4_MessageInfo_t msg = seL4_MessageInfo_new(0, 0, 0, 1);
     sel4osapi_thread_info_t *current_thread = sel4osapi_thread_get_current();
 
     assert(mutex != NULL);
@@ -83,7 +86,8 @@ sel4osapi_mutex_unlock(sel4osapi_mutex_t *mutex) {
     if (mutex->held == 0) {
         /* This was the outermost lock we held. Wake the next person up. */
         mutex->owner = NULL;
-        seL4_Notify(mutex->aep.cptr, WAIT_RESULT_OK);
+        seL4_SetMR(0, WAIT_RESULT_OK);
+        seL4_Send(mutex->aep.cptr, msg);
     }
 
     return 0;

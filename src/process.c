@@ -81,7 +81,7 @@ sel4osapi_process_init_env(sel4osapi_process_t *process,
             /* allocate an AEP for the process' idling */
             vka_object_t aep_obj = { 0 };
 
-            error = vka_alloc_async_endpoint(parent_vka, &aep_obj);
+            error = vka_alloc_notification(parent_vka, &aep_obj);
             assert(error == 0);
 
             process->parent_idling_aep = aep_obj.cptr;
@@ -314,7 +314,7 @@ sel4osapi_process_join(sel4osapi_process_t *process)
 {
     /* wait on it to finish or fault, report result */
     seL4_Word badge;
-    seL4_MessageInfo_t info = seL4_Wait(process->native.fault_endpoint.cptr, &badge);
+    seL4_MessageInfo_t info = seL4_Recv(process->native.fault_endpoint.cptr, &badge);
     UNUSED int result = sel4osapi_getMR(0);
     seL4_Uint32 label = seL4_MessageInfo_get_label(info);
     return label;
@@ -348,7 +348,7 @@ void
 sel4osapi_process_signal_root(sel4osapi_process_env_t *process, int exit_code)
 {
 
-    seL4_MessageInfo_t info = seL4_MessageInfo_new(seL4_NoFault, 0, 0, 1);
+    seL4_MessageInfo_t info = seL4_MessageInfo_new(seL4_Fault_NullFault, 0, 0, 1);
     sel4osapi_setMR(0, (seL4_Word) exit_code);
     seL4_Send(process->fault_endpoint, info);
     sel4osapi_idle();
@@ -392,7 +392,7 @@ sel4osapi_process_spawn(sel4osapi_process_t *process)
     assert(vaddr != 0);
 
     /* now send a message telling the process what address the data is at */
-    seL4_MessageInfo_t info = seL4_MessageInfo_new(seL4_NoFault, 0, 0, 1);
+    seL4_MessageInfo_t info = seL4_MessageInfo_new(seL4_Fault_NullFault, 0, 0, 1);
     sel4osapi_setMR(0, (seL4_Word) vaddr);
     seL4_Send(process->native.fault_endpoint.cptr, info);
 }
@@ -429,7 +429,7 @@ sel4osapi_process_get_current()
 
 
 seL4_CPtr
-sel4osapi_process_copy_cap_into(sel4osapi_process_t *process, vka_t *parent_vka, seL4_CPtr cap, seL4_CapRights rights)
+sel4osapi_process_copy_cap_into(sel4osapi_process_t *process, vka_t *parent_vka, seL4_CPtr cap, seL4_CapRights_t rights)
 {
     seL4_CPtr minted_cap;
     seL4_CapData_t cap_badge;

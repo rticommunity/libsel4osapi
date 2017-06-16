@@ -113,7 +113,7 @@ sel4osapi_sysclock_wait_for_timeout(seL4_Word timeout_id, seL4_CPtr callback_aep
 {
     seL4_Word sender_badge;
     seL4_Uint32 wakeup_time;
-    seL4_MessageInfo_t reply_minfo = seL4_Wait(callback_aep, &sender_badge);
+    seL4_MessageInfo_t reply_minfo = seL4_Recv(callback_aep, &sender_badge);
     assert(seL4_MessageInfo_get_length(reply_minfo) == 1);
     wakeup_time = sel4osapi_getMR(0);
 
@@ -146,7 +146,7 @@ sel4osapi_sysclock_server_thread(sel4osapi_thread_info_t *thread)
         seL4_MessageInfo_t minfo;
         seL4_Uint32 opcode;
 
-        minfo = seL4_Wait(sysclock->server_ep_obj.cptr, &sender_badge);
+        minfo = seL4_Recv(sysclock->server_ep_obj.cptr, &sender_badge);
         assert(seL4_MessageInfo_get_length(minfo) >= 1);
 
         opcode = sel4osapi_getMR(0);
@@ -315,7 +315,9 @@ sel4osapi_sysclock_timer_thread(sel4osapi_thread_info_t *thread)
 
                 if (timeout != NULL && timeout->aep != seL4_CapNull && timeout->next_event <= sysclock->time)
                 {
-                    seL4_Notify(timeout->aep, sysclock->time);
+                    seL4_MessageInfo_t msg = seL4_MessageInfo_new(0, 0, 0, 1);
+                    seL4_SetMR(0, sysclock->time);
+                    seL4_Send(timeout->aep, msg);
 
                     if (timeout->periodic)
                     {
@@ -359,7 +361,7 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
     error = vka_alloc_endpoint(vka,&sysclock->server_ep_obj);
     assert(error == 0);
 
-    error = vka_alloc_async_endpoint(vka,&sysclock->timer_aep);
+    error = vka_alloc_notification(vka,&sysclock->timer_aep);
     assert(error == 0);
 
     sysclock->native_timer = sel4platsupport_get_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr);

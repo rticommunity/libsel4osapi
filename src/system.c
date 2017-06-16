@@ -10,6 +10,7 @@
  */
 
 #include <sel4osapi/osapi.h>
+#include <sel4platsupport/bootinfo.h>
 
 #include <limits.h>
 #include <string.h>
@@ -56,7 +57,7 @@ static void
 sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_pool)
 {
     int error = 0;
-    seL4_BootInfo *info = seL4_GetBootInfo();
+    seL4_BootInfo *info = platsupport_get_bootinfo(); // seL4_GetBootInfo();
 
     /* mark the system singleton as the root_task */
     system->is_root = 1;
@@ -159,7 +160,7 @@ sel4osapi_system_bootstrap_user(sel4osapi_system_t *system, void *bootstrap_mem_
          * which we don't. */
         uint32_t fake_paddr = 0;
         uint32_t size_bits = system->env->untyped_size_bits_list[size_bits_index];
-        error = allocman_utspace_add_uts(system->allocator, 1, &path, &size_bits, &fake_paddr);
+        error = allocman_utspace_add_uts(system->allocator, 1, &path, &size_bits, &fake_paddr, ALLOCMAN_UT_KERNEL);
         assert(!error);
     }
 
@@ -231,7 +232,7 @@ sel4osapi_system_initialize_main_thread(sel4osapi_system_t *system)
     {
         int error = 0;
         vka_object_t aep_obj = {0};
-        error = vka_alloc_async_endpoint(&system->vka, &aep_obj);
+        error = vka_alloc_notification(&system->vka, &aep_obj);
         assert(error == 0);
         system->main_thread.info.wait_aep = aep_obj.cptr;
     }
@@ -271,7 +272,7 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     {
         /* allocate an AEP for the root task to idle  on */
         vka_object_t aep_obj = { 0 };
-        error = vka_alloc_async_endpoint(&system->vka, &aep_obj);
+        error = vka_alloc_notification(&system->vka, &aep_obj);
         assert(error == 0);
         vka_cspace_make_path(&system->vka, aep_obj.cptr, &system->idling_aep);
     }
@@ -379,9 +380,9 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
     endpoint = (seL4_CPtr) atoi(argv[2]);
     /* wait for a message from root_task
      * containing this process' environment */
-    info = seL4_Wait(endpoint, &badge);
+    info = seL4_Recv(endpoint, &badge);
     /* check the label is correct */
-    assert(seL4_MessageInfo_get_label(info) == seL4_NoFault);
+    assert(seL4_MessageInfo_get_label(info) == seL4_Fault_NullFault);
     assert(seL4_MessageInfo_get_length(info) == 1);
     env = (sel4osapi_process_env_t*) seL4_GetMR(0);
     assert(env != 0);

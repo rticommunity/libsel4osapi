@@ -24,6 +24,7 @@
 static void
 udprecv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, uint16_t port)
 {
+    seL4_MessageInfo_t msg = seL4_MessageInfo_new(0, 0, 0, 1);
     sel4osapi_udp_socket_server_t *server = (sel4osapi_udp_socket_server_t*)arg;
     sel4osapi_udp_message_t *m = NULL;
 
@@ -46,7 +47,8 @@ udprecv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, uint16_
 
 notify:
     sel4osapi_mutex_unlock(server->msgs_mutex);
-    seL4_Notify(server->socket.aep_rx_data, 1);
+    seL4_SetMR(0, 1);
+    seL4_Send(server->socket.aep_rx_data, msg);
 }
 static void
 sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
@@ -66,7 +68,7 @@ sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
 
             syslog_trace("waiting for data...");
 
-            minfo = seL4_Wait(server->socket.ep_tx_ready, &sender_badge);
+            minfo = seL4_Recv(server->socket.ep_tx_ready, &sender_badge);
             assert(seL4_MessageInfo_get_length(minfo) == 3);
             len = sel4osapi_getMR(0);
             addr.addr = sel4osapi_getMR(1);
@@ -106,9 +108,8 @@ sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
 static void
 sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
 {
+    UNUSED seL4_MessageInfo_t minfo;
     sel4osapi_udp_socket_server_t *server = (sel4osapi_udp_socket_server_t*) thread->arg;
-    seL4_Word mr0, mr1, mr2;
-    seL4_MessageInfo_t minfo;
     unsigned int packet_len = 0;
     sel4osapi_udp_message_t *msg = NULL;
     uint16_t port;
@@ -126,11 +127,16 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
 
         if (remaining_msgs > 0)
         {
-            seL4_Notify(server->socket.aep_rx_data, 0);
+            seL4_SendWithMRs(server->socket.aep_rx_data, 
+                    seL4_MessageInfo_new(0, 0, 0, 1),
+                    0,
+                    seL4_Null,
+                    seL4_Null,
+                    seL4_Null);
         }
 
         /* wait for client to be ready to receive */
-        minfo = seL4_Wait(server->socket.ep_rx_ready, &sender_badge);
+        minfo = seL4_Recv(server->socket.ep_rx_ready, &sender_badge);
 
         error = sel4osapi_mutex_lock(server->msgs_mutex);
         assert(!error);
@@ -164,15 +170,12 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
         remaining_msgs--;
 
 reply:
-        minfo = seL4_MessageInfo_new(0, 0, 0, 3);
-        mr0 = packet_len;
-        mr1 = port;
-        mr2 = ipaddr.addr;
-        seL4_SetMR(0, mr0);
-        seL4_SetMR(1, mr1);
-        seL4_SetMR(2, mr2);
         /* notify client to read rx_buf */
-        seL4_Reply(minfo);
+        seL4_ReplyWithMRs(seL4_MessageInfo_new(0, 0, 0, 3),
+                (seL4_Word *)&packet_len,
+                (seL4_Word *)&port,
+                (seL4_Word *)&ipaddr.addr,
+                seL4_Null);
 
         if (msg)
         {
@@ -236,7 +239,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
     {
 
         syslog_trace("waiting for next request...");
-        minfo = seL4_Wait(udp->stack_op_ep, &sender_badge);
+        minfo = seL4_Recv(udp->stack_op_ep, &sender_badge);
         mr0 = seL4_GetMR(0);
         mr1 = seL4_GetMR(1);
         mr2 = seL4_GetMR(2);
@@ -560,7 +563,7 @@ sel4osapi_udp_bind(sel4osapi_udp_socket_t *socket, uint16_t port)
     assert(socket);
     assert(socket->port == 0);
 
-    socket->aep_rx_data = vka_alloc_async_endpoint_leaky(vka);
+    socket->aep_rx_data = vka_alloc_notification_leaky(vka);
     assert(socket->aep_rx_data != seL4_CapNull);
     vka_cspace_alloc(vka, &rx_read_ep_copy);
     assert(rx_read_ep_copy != seL4_CapNull);
@@ -658,7 +661,7 @@ sel4osapi_udp_recv(sel4osapi_udp_socket_t *socket, void *msg, unsigned int max_l
     *port_out = 0;
 
 
-    minfo = seL4_Wait(socket->aep_rx_data, &sender_badge);
+    minfo = seL4_Recv(socket->aep_rx_data, &sender_badge);
     /* a message was received on the socket,
      * take lock on rx_buf */
     sel4osapi_semaphore_take(client->rx_buf_avail, 0);
