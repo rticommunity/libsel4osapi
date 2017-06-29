@@ -108,7 +108,7 @@ sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
 static void
 sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
 {
-    UNUSED seL4_MessageInfo_t minfo;
+    seL4_MessageInfo_t minfo;
     sel4osapi_udp_socket_server_t *server = (sel4osapi_udp_socket_server_t*) thread->arg;
     unsigned int packet_len = 0;
     sel4osapi_udp_message_t *msg = NULL;
@@ -127,12 +127,9 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
 
         if (remaining_msgs > 0)
         {
-            seL4_SendWithMRs(server->socket.aep_rx_data, 
-                    seL4_MessageInfo_new(0, 0, 0, 1),
-                    0,
-                    seL4_Null,
-                    seL4_Null,
-                    seL4_Null);
+            minfo = seL4_MessageInfo_new(0, 0, 0, 1);
+            seL4_SetMR(0, 0);
+            seL4_Send(server->socket.aep_rx_data, minfo);
         }
 
         /* wait for client to be ready to receive */
@@ -171,11 +168,11 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
 
 reply:
         /* notify client to read rx_buf */
-        seL4_ReplyWithMRs(seL4_MessageInfo_new(0, 0, 0, 3),
-                (seL4_Word *)&packet_len,
-                (seL4_Word *)&port,
-                (seL4_Word *)&ipaddr.addr,
-                seL4_Null);
+        minfo = seL4_MessageInfo_new(0, 0, 0, 3);
+        seL4_SetMR(0, packet_len);
+        seL4_SetMR(1, port);
+        seL4_SetMR(2, ipaddr.addr);
+        seL4_Reply(minfo);
 
         if (msg)
         {

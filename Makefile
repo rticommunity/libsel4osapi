@@ -25,11 +25,6 @@ ifeq ($(CONFIG_LIB_OSAPI_NET),)
   CFILES := $(filter-out $(CFILES_NET:%=src/%), $(CFILES))
 endif
 
-CFILES_SERIAL := io.c
-ifeq ($(CONFIG_LIB_OSAPI_SERIAL),)
-  CFILES := $(filter-out $(CFILES_SERIAL:%=src/%), $(CFILES))
-endif
-
 # Header files/directories this library provides
 HDRFILES := $(wildcard $(SOURCE_DIR)/include/*)
 

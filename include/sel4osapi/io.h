@@ -12,6 +12,12 @@
 #ifndef SEL4OSAPI_IO_H_
 #define SEL4OSAPI_IO_H_
 
+
+void
+sel4osapi_io_initialize(void);
+
+#ifdef CONFIG_LIB_OSAPI_SERIAL
+
 #define SEL4OSAPI_SERIAL_BUF_SIZE       1 << 12
 #define SEL4OSAPI_SERIAL_BUF_PAGES      (SEL4OSAPI_SERIAL_BUF_SIZE/PAGE_SIZE_4K)
 
@@ -40,8 +46,9 @@ typedef struct sel4osapi_serialserver
 } sel4osapi_serialserver_t;
 
 
+
 void
-sel4osapi_io_initialize(sel4osapi_serialserver_t *server, int priority);
+sel4osapi_io_serial_initialize(sel4osapi_serialserver_t *server, int priority);
 
 sel4osapi_serialclient_t *
 sel4osapi_io_serial_create_client(sel4osapi_serialserver_t *server);
@@ -51,6 +58,7 @@ sel4osapi_io_serial_write(sel4osapi_serialdevice_t dev, void *data, uint32_t siz
 
 int
 sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size);
+#endif
 
 
 #endif /* SEL4OSAPI_IO_H_ */

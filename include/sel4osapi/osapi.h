@@ -40,9 +40,7 @@
 
 #include "sel4osapi/ipc.h"
 
-#ifdef CONFIG_LIB_OSAPI_SERIAL
 #include "sel4osapi/io.h"
-#endif
 
 #ifdef CONFIG_LIB_OSAPI_NET
 #include "sel4osapi/network.h"

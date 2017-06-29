@@ -17,7 +17,22 @@
 
 #include <string.h>
 
+void
+sel4osapi_io_initialize(void) {
+    int error = 0;
 
+    vspace_t *vspace = sel4osapi_system_get_vspace();
+    vka_t *vka = sel4osapi_system_get_vka();
+    ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
+
+    error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
+    assert(error == 0);
+    error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
+    assert(error == 0);
+}
+
+
+#ifdef CONFIG_LIB_OSAPI_SERIAL
 typedef enum sel4osapi_serial_op
 {
     SERIAL_OP_WRITE = 1,
@@ -206,7 +221,7 @@ sel4osapi_io_serial_create_client(sel4osapi_serialserver_t *server)
 }
 
 void
-sel4osapi_io_initialize(sel4osapi_serialserver_t *server, int priority)
+sel4osapi_io_serial_initialize(sel4osapi_serialserver_t *server, int priority)
 {
     int error = 0;
     ps_chardevice_t *chardev;
@@ -214,12 +229,10 @@ sel4osapi_io_initialize(sel4osapi_serialserver_t *server, int priority)
     vspace_t *vspace = sel4osapi_system_get_vspace();
     simple_t *simple = sel4osapi_system_get_simple();
     vka_t *vka = sel4osapi_system_get_vka();
+#if defined(CONFIG_LIB_OSAPI_SERIAL_UART1) || defined(CONFIG_LIB_OSAPI_SERIAL_UART2)
     ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
+#endif
 
-    error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
-    assert(error == 0);
-    error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
-    assert(error == 0);
     error = platsupport_serial_setup_simple(vspace, simple, vka);
     assert(error == 0);
 
@@ -250,3 +263,5 @@ sel4osapi_io_initialize(sel4osapi_serialserver_t *server, int priority)
     error = sel4osapi_thread_start(server->thread);
     assert(!error);
 }
+
+#endif

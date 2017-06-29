@@ -10,13 +10,14 @@
  */
 
 #include <sel4osapi/osapi.h>
-#include <sel4platsupport/bootinfo.h>
+// #include <sel4platsupport/bootinfo.h>
 
 #include <limits.h>
 #include <string.h>
 #include <simple-default/simple-default.h>
 #include <allocman/bootstrap.h>
 #include <allocman/vka.h>
+#include <sel4platsupport/bootinfo.h>
 
 #if 0
 #if defined(CONFIG_PLAT_IMX6)
@@ -194,6 +195,7 @@ static void
 sel4osapi_system_initialize_root_task_env(sel4osapi_system_t *system)
 {
     /* allocate a page to store the sel4osapi_process_env_t instance */
+    printf("%s: Allocating 1 page for with %d bits for env...\n", __FUNCTION__, PAGE_BITS_4K);
     system->env = (sel4osapi_process_env_t*) vspace_new_pages(&system->vspace, seL4_AllRights, 1, PAGE_BITS_4K);
     assert(system->env != NULL);
 
@@ -209,9 +211,11 @@ sel4osapi_system_initialize_root_task_env(sel4osapi_system_t *system)
     snprintf(system->env->name, SEL4OSAPI_USER_PROCESS_NAME_MAX_LEN, "%s", "root_task");
     system->env->idling_aep = system->idling_aep.capPtr;
 
+    printf("%s: Allocating simple pool for thread...\n", __FUNCTION__);
     system->env->threads = simple_pool_new(SEL4OSAPI_MAX_THREADS_PER_PROCESS, sizeof(sel4osapi_thread_t), NULL, NULL, NULL);
     assert(system->env->threads);
 
+    printf("%s Completed successfully\n", __FUNCTION__);
 }
 
 /*
@@ -260,20 +264,29 @@ int
 sel4osapi_system_initialize(void *bootstrap_mem_pool)
 {
     int error = 0;
-    sel4osapi_system_t *system = sel4osapi_system_get_instanceI();
-
+    sel4osapi_system_t *system;
+    
     /* check that we have a bootstrap buffer*/
     assert(bootstrap_mem_pool != NULL);
 
+   
+    printf("%s: Start\n", __FUNCTION__);
+    system = sel4osapi_system_get_instanceI();
+
+    printf("%s: Bootstrapping system root...\n", __FUNCTION__);
     sel4osapi_system_bootstrap_root(system, bootstrap_mem_pool);
 
+    printf("%s: Initializing global mutex...\n", __FUNCTION__);
     sel4osapi_system_initialize_global_mutex(system);
 
+    printf("%s: Allocating AEP for root task 1/2\n", __FUNCTION__);
     {
-        /* allocate an AEP for the root task to idle  on */
+        /* allocate an AEP for the root task to idle on */
         vka_object_t aep_obj = { 0 };
         error = vka_alloc_notification(&system->vka, &aep_obj);
         assert(error == 0);
+
+        printf("%s: Allocating AEP for root task 2/2\n", __FUNCTION__);
         vka_cspace_make_path(&system->vka, aep_obj.cptr, &system->idling_aep);
     }
     {
@@ -285,26 +298,35 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
         UNUSED unsigned int reserve_num = 0;
 
         /* Reserve some memory for the root_task (we'll free it after allocating untypeds for the process) */
+        printf("%s: Allocating untyped memory for root task\n", __FUNCTION__);
         reserve_num = sel4osapi_util_allocate_untypeds(&system->vka, root_task_uts, SEL4OSAPI_ROOT_TASK_UNTYPED_MEM_SIZE, ROOT_TASK_NUM_UNTYPEDS);
+        printf("%s: \t-> %d bytes allocated\n", __FUNCTION__, reserve_num);
 
         /* Now allocate everything else for the user processes */
+        printf("%s: Allocating untyped memory for user process\n", __FUNCTION__);
         system->user_untypeds_num = sel4osapi_util_allocate_untypeds(&system->vka, system->user_untypeds,
                                             UINT_MAX, ARRAY_SIZE(system->user_untypeds));
+        printf("%s: \t-> %d bytes allocated\n", __FUNCTION__, system->user_untypeds_num);
+
         /* Fill out the size_bits list */
+        printf("%s: Initializing size bits list...\n", __FUNCTION__);
         for (i = 0; i < system->user_untypeds_num; i++) {
             system->user_untypeds_size_bits[i] = system->user_untypeds[i].size_bits;
         }
         /* Return reserve memory */
+        printf("%s: Release reserved memory...\n", __FUNCTION__);
         for (i = 0; i < reserve_num; i++) {
             vka_free_object(&system->vka, &root_task_uts[i]);
         }
         assert(system->user_untypeds_num > 0);
         /* initialize untypeds allocation map */
+        printf("%s: Initializing allocation map...\n", __FUNCTION__);
         for (i = 0; i < system->user_untypeds_num; ++i) {
             system->user_untypeds_allocation[i] = 0;
         }
     }
     {
+        printf("%s: Creating simple pool...\n", __FUNCTION__);
         system->processes = simple_pool_new(SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t), NULL, NULL, NULL);
         assert(system->processes != NULL);
     }
@@ -320,23 +342,35 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
         sel4utils_elf_reserve(NULL, IMAGE_NAME, elf_regions);
     }
 #endif
+    printf("%s: Initializing root task envornment...\n", __FUNCTION__);
     sel4osapi_system_initialize_root_task_env(system);
 
+    printf("%s: Initializing main thread...\n", __FUNCTION__);
     sel4osapi_system_initialize_main_thread(system);
 
+    printf("%s: Initializing logger...\n", __FUNCTION__);
     sel4osapi_log_initialize();
 
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
+    printf("%s: Initializing sysclock...\n", __FUNCTION__);
     sel4osapi_sysclock_initialize(&system->sysclock);
+
+    printf("%s: Starting sysclock...\n", __FUNCTION__);
     sel4osapi_sysclock_start(&system->sysclock);
 #endif
 
+    printf("%s: Initializing IPC Server...\n", __FUNCTION__);
     sel4osapi_ipcserver_initialize(&system->ipc);
 
+    printf("%s: Initializing I/O...\n", __FUNCTION__);
+    sel4osapi_io_initialize();
+
 #ifdef CONFIG_LIB_OSAPI_SERIAL
-    sel4osapi_io_initialize(&system->serial, system->env->priority);
+    printf("%s: Initializing I/O...\n", __FUNCTION__);
+    sel4osapi_io_serial_initialize(&system->serial, system->env->priority);
 #endif
 
+    printf("%s: Completed successfully\n", __FUNCTION__);
     return seL4_NoError;
 }
 
@@ -376,28 +410,39 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
      * the process's arguments */
     assert(bootstrap_mem_pool != NULL && argc == 3 && argv != NULL);
 
+    printf("FABDEBUG> [hello] %s: Initializing sel4osapi\n", __FUNCTION__); 
     /* parse received args */
     endpoint = (seL4_CPtr) atoi(argv[2]);
     /* wait for a message from root_task
      * containing this process' environment */
+
     info = seL4_Recv(endpoint, &badge);
+
+    printf("FABDEBUG> [hello] %s: Got env\n", __FUNCTION__); 
     /* check the label is correct */
     assert(seL4_MessageInfo_get_label(info) == seL4_Fault_NullFault);
     assert(seL4_MessageInfo_get_length(info) == 1);
     env = (sel4osapi_process_env_t*) seL4_GetMR(0);
     assert(env != 0);
 
+    printf("FABDEBUG> [hello] %s: Calling system_bootstrap_user\n", __FUNCTION__); 
+
     sel4osapi_system_bootstrap_user(system, bootstrap_mem_pool, env);
 
+    printf("FABDEBUG> [hello] %s: Calling system_initialize_global_mutex\n", __FUNCTION__); 
     sel4osapi_system_initialize_global_mutex(system);
 
+    printf("FABDEBUG> [hello] %s: Calling simple_pool_new\n", __FUNCTION__); 
     system->env->threads = simple_pool_new(SEL4OSAPI_MAX_THREADS_PER_PROCESS, sizeof(sel4osapi_thread_t), NULL, NULL, NULL);
     assert(system->env->threads);
 
+    printf("FABDEBUG> [hello] %s: Calling system_initialize_main_thread\n", __FUNCTION__); 
     sel4osapi_system_initialize_main_thread(system);
 
+    printf("FABDEBUG> [hello] %s: Calling log_initialize\n", __FUNCTION__); 
     sel4osapi_log_initialize();
 
+    printf("FABDEBUG> [hello] %s: Creating semaphores...\n", __FUNCTION__); 
     {
         assert(env->ipcclient.rx_buf);
         assert(env->ipcclient.tx_buf);
@@ -409,6 +454,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
         assert(env->ipcclient.tx_buf_avail);
     }
 #ifdef CONFIG_LIB_OSAPI_NET
+    printf("FABDEBUG> [hello] %s: Creating network mutex...\n", __FUNCTION__); 
     {
         env->udp_iface.mutex = sel4osapi_mutex_create();
         assert(env->udp_iface.mutex);
@@ -418,6 +464,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
     }
 #endif
 #ifdef CONFIG_LIB_OSAPI_SERIAL
+    printf("FABDEBUG> [hello] %s: Creating serial semaphore...\n", __FUNCTION__); 
     {
         assert(env->serial.buf);
         assert(env->serial.buf_size > 0);
@@ -426,6 +473,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
     }
 #endif
 
+    printf("FABDEBUG> [hello] %s: Init completed successfully\n", __FUNCTION__); 
     return seL4_NoError;
 }
 
@@ -462,7 +510,7 @@ sel4osapi_system_get_simple()
     return &sel4osapi_gv_system.simple;
 }
 
-#ifdef CONFIG_LIB_OSAPI_SERIAL
+#if defined(CONFIG_LIB_OSAPI_SERIAL) || defined(CONFIG_LIB_OSAPI_NET)
 ps_io_ops_t*
 sel4osapi_system_get_io_ops()
 {

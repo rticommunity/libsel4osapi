@@ -140,12 +140,9 @@ sel4osapi_semaphore_give(sel4osapi_semaphore_t* semaphore)
     for (i = 0; i < SEL4OSAPI_SEMAPHORE_QUEUE_SIZE; ++i) {
         if (semaphore->wait_queue[i] != seL4_CapNull)
         {
-            seL4_SendWithMRs(semaphore->wait_queue[i], 
-                    seL4_MessageInfo_new(0, 0, 0, 1), 
-                    WAIT_RESULT_OK,
-                    seL4_Null,
-                    seL4_Null,
-                    seL4_Null);
+            seL4_MessageInfo_t minfo = seL4_MessageInfo_new(0, 0, 0, 1);
+            seL4_SetMR(0, WAIT_RESULT_OK);
+            seL4_Send(semaphore->wait_queue[i], minfo);
         }
     }
 

@@ -209,7 +209,7 @@ sel4osapi_system_get_vspace();
 simple_t*
 sel4osapi_system_get_simple();
 
-#ifdef CONFIG_LIB_OSAPI_SERIAL
+#if defined(CONFIG_LIB_OSAPI_SERIAL) || defined(CONFIG_LIB_OSAPI_NET)
 ps_io_ops_t*
 sel4osapi_system_get_io_ops();
 #endif

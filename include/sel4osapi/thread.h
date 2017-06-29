@@ -136,12 +136,17 @@ sel4osapi_thread_get_current();
 seL4_Uint32
 sel4osapi_thread_sleep(uint32_t ms);
 
+/* ---------------------------------------------------------------------------
+ * FABRIZIO: Those functions are not needed and should be replaced with seL4_GetMR/seL4_SetMR
+ */
 #define sel4osapi_getMR(_i)     (sel4osapi_thread_get_current()->ipc->msg[_i])
 
 #define sel4osapi_setMR(_i, _val)\
 {\
     sel4osapi_thread_get_current()->ipc->msg[_i] = _val;\
 }
+
+/* --------------------------------------------------------------------------- */
 
 #ifdef WRAP_SYSCALLS
 static inline seL4_MessageInfo_t
