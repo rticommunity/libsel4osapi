@@ -6,11 +6,11 @@
 <remote name="savannah" fetch="git://git.savannah.nongnu.org"/>
 <remote name="rti" fetch="localhost:/home/asorbini/workspace.security" />
 
-<default revision="1.0.x-compatible"
+<default revision="5.2.x-compatible"
          remote="seL4"/>
 
 <project name="seL4.git"                    path="kernel"
-         revision="refs/tags/1.0.4">
+         revision="refs/tags/5.2.0">
     <linkfile src="libsel4"                 dest="libs/libsel4"/>
 </project>
 <project name="common-tool.git"             path="tools/common"/>
@@ -30,8 +30,7 @@
 <project name="libsel4simple-stable.git"    path="libs/libsel4simple-stable"/>
 <project name="libplatsupport.git"          path="libs/libplatsupport"/>
 <project name="libutils.git"                path="libs/libutils"/>
-<project name="libsel4sync.git"             path="libs/libsel4sync"
-         revision="refs/tags/v1.0.0"/>
+<project name="libsel4sync.git"             path="libs/libsel4sync"/>
 <project name="libethdrivers"               path="libs/libethdrivers"
          revision="master"/>
 
