@@ -31,12 +31,12 @@ udprecv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, uint16_
     int error = sel4osapi_mutex_lock(server->msgs_mutex);
     assert(!error);
 
-    syslog_trace_a("new message on sd=%d", server->socket.id);
+    syslog_trace("new message on sd=%d", server->socket.id);
 
     m = simple_pool_alloc(server->msgs);
 
     if (m == NULL) {
-        syslog_warn_a("discarding msg on sd=%d", server->socket.id);
+        syslog_warn("discarding msg on sd=%d", server->socket.id);
         pbuf_free(p);
         goto notify;
     }
@@ -76,7 +76,7 @@ sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
 
             if (len > server->client->tx_buf_size)
             {
-                syslog_warn_a("truncating msg from %d to %d", len, server->client->tx_buf_size);
+                syslog_warn("truncating msg from %d to %d", len, server->client->tx_buf_size);
                 len = server->client->tx_buf_size;
             }
 
@@ -85,10 +85,10 @@ sel4osapi_udp_socket_tx_thread(sel4osapi_thread_info_t *thread)
             assert(!error);
             p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
             if (p) {
-                syslog_trace_a("transmitting msg [len=%d, addr=%s, port=%d]", len, ipaddr_ntoa(&addr), port);
+                syslog_trace("transmitting msg [len=%d, addr=%s, port=%d]", len, ipaddr_ntoa(&addr), port);
                 memcpy(p->payload, server->client->tx_buf, len);
                 lwerr = udp_sendto(server->udp_pcb, p, &addr,port);
-                syslog_trace_a("udp_sendto=%d",lwerr);
+                syslog_trace("udp_sendto=%d",lwerr);
                 pbuf_free(p);
             }
             else
@@ -161,7 +161,7 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
         }
         assert(packet_len <= server->client->rx_buf_size);
 
-        syslog_trace_a("received msg [ip=%s (%d), port=%d, size=%d]",
+        syslog_trace("received msg [ip=%s (%d), port=%d, size=%d]",
                             ipaddr_ntoa(&ipaddr), ipaddr.addr, port, packet_len);
 
         remaining_msgs--;
@@ -246,7 +246,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
 
         opcode = mr0;
 
-        syslog_trace_a("new request: opcode=%d, args_num=%d", opcode, args_num);
+        syslog_trace("new request: opcode=%d, args_num=%d", opcode, args_num);
 
         switch (opcode) {
             case UDPSTACK_CREATE_SOCKET:
@@ -256,7 +256,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 client_id = mr1;
                 addr.addr = mr2;
 
-                syslog_trace_a("create socket request: client=%d, add=%s", client_id, ipaddr_ntoa(&addr));
+                syslog_trace("create socket request: client=%d, add=%s", client_id, ipaddr_ntoa(&addr));
 
                 {
                     simple_list_t *cursor;
@@ -345,7 +345,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 error = sel4osapi_thread_start(socket_server->tx_thread);
                 assert(error == 0);
 
-                syslog_trace_a("new socket created: sd=%d, addr=%s, client=%d",
+                syslog_trace("new socket created: sd=%d, addr=%s, client=%d",
                         socket_server->socket.id, ipaddr_ntoa(&socket_server->socket.addr),
                         socket_server->client->id)
 
@@ -359,7 +359,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 socket_id = mr1;
                 bind_port = mr2;
 
-                syslog_trace_a("bind socket request: socket=%d, port=%d", socket_id, bind_port);
+                syslog_trace("bind socket request: socket=%d, port=%d", socket_id, bind_port);
 
                 {
                     simple_list_t *cursor;
@@ -424,7 +424,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 error = sel4osapi_thread_start(socket_server->rx_thread);
                 assert(error == 0);
 
-                syslog_trace_a("socket bound: sd=%d, addr=%s, port=%d, client=%d",
+                syslog_trace("socket bound: sd=%d, addr=%s, port=%d, client=%d",
                         socket_server->socket.id, ipaddr_ntoa(&socket_server->socket.addr),
                         socket_server->socket.port, socket_server->client->id)
 
@@ -445,7 +445,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 connect_addr.addr = mr2;
                 connect_port = mr3;
 
-                syslog_trace_a("socket %d connected to %s:%d", socket_id, ipaddr_ntoa(&connect_addr), connect_port);
+                syslog_trace("socket %d connected to %s:%d", socket_id, ipaddr_ntoa(&connect_addr), connect_port);
 
                 mr0 = error;
 
@@ -538,7 +538,7 @@ sel4osapi_udp_create_socket(ip_addr_t *addr)
     seL4_SetCapReceivePath(seL4_CapNull,seL4_CapNull,seL4_CapNull);
     sel4osapi_mutex_unlock(udp_iface->mutex);
 
-    syslog_trace_a("new socket created: sd=%d, addr=%s, client=%d", socket->id, ipaddr_ntoa(&socket->addr), client->id);
+    syslog_trace("new socket created: sd=%d, addr=%s, client=%d", socket->id, ipaddr_ntoa(&socket->addr), client->id);
 
     return socket;
 }
@@ -675,11 +675,11 @@ sel4osapi_udp_recv(sel4osapi_udp_socket_t *socket, void *msg, unsigned int max_l
     port = mr1;
     addr.addr = mr2;
 
-    syslog_trace_a("receiving UDP message [ip=%s, port=%d, size=%d]", ipaddr_ntoa(&addr), port, len);
+    syslog_trace("receiving UDP message [ip=%s, port=%d, size=%d]", ipaddr_ntoa(&addr), port, len);
 
     if (len > max_len)
     {
-        syslog_error_a("supplied buffer too small for UDP message [size=%d, msg_len=%d]", max_len, len);
+        syslog_error("supplied buffer too small for UDP message [size=%d, msg_len=%d]", max_len, len);
         error = seL4_NotEnoughMemory;
         goto done;
     }

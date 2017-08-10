@@ -71,7 +71,7 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
             devid = mr2;
             op_size = mr3;
 
-            syslog_info_a("new serial request: client=%d, op=%d, dev=%d, size=%d",
+            syslog_info("new serial request: client=%d, op=%d, dev=%d, size=%d",
                             client_id, opcode, devid, op_size);
 
             simple_list_t *cursor = server->clients->entries;

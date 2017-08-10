@@ -83,7 +83,7 @@ sel4osapi_sysclock_schedule_timeout(
 
     if (error)
     {
-        syslog_info_a("FAILED set-timeout, aep=%d, t-aep=%d\n", callback_aep, sel4osapi_thread_get_current()->wait_aep);
+        syslog_info("FAILED set-timeout, aep=%d, t-aep=%d", callback_aep, sel4osapi_thread_get_current()->wait_aep);
         return 0;
     }
     else
@@ -222,7 +222,7 @@ sel4osapi_sysclock_server_thread(sel4osapi_thread_info_t *thread)
 
                 if (new_entry == NULL)
                 {
-                    printf("%s: failed to allocate timer entry\n", thread->name);
+                    syslog_error("Failed to allocate timer entry");
                     error = 1;
                     reply_aep = seL4_CapNull;
                     insert_time = 0;
@@ -287,13 +287,20 @@ sel4osapi_sysclock_get_time()
 #endif
     return current_time;
 #else
-    seL4_MessageInfo_t msg_info = seL4_MessageInfo_new(0,0,0,1);
     sel4osapi_process_env_t *process = sel4osapi_process_get_current();
-    UNUSED seL4_MessageInfo_t reply_tag;
+    if (process && process->sysclock_server_ep) {
+        printf(">>>> Getting a (good) clock\n");
+        seL4_MessageInfo_t msg_info = seL4_MessageInfo_new(0,0,0,1);
+        UNUSED seL4_MessageInfo_t reply_tag;
 
-    seL4_SetMR(0, SYSCLOCK_OP_GET_TIME);
-    reply_tag = seL4_Call(process->sysclock_server_ep, msg_info);
-    return seL4_GetMR(0);
+        seL4_SetMR(0, SYSCLOCK_OP_GET_TIME);
+        reply_tag = seL4_Call(process->sysclock_server_ep, msg_info);
+        printf(">>>> Done, clock=%d", seL4_GetMR(0));
+        return seL4_GetMR(0);
+    }
+    // Clock not initialized
+    return 0;
+
 #endif
 }
 
@@ -357,10 +364,56 @@ sel4osapi_sysclock_timer_thread(sel4osapi_thread_info_t *thread)
     }
 }
 
+extern void doMallocTestNoFree(void);
+
+
+#ifdef CONFIG_ARCH_ARM
+seL4_timer_t * sel4osapi_arch_get_default_timer(vka_t *vka, vspace_t *vspace, simple_t *simple, seL4_CPtr notification) {
+    seL4_timer_t *retVal;
+    retVal = sel4platsupport_get_default_timer(vka, vspace, simple, notification);
+    ZF_LOGF_IF(retVal == NULL, "Failed to create default timer");
+    return retVal;
+}
+
+#elif CONFIG_ARCH_X86
+#include <sel4platsupport/device.h>
+#include <platsupport/plat/hpet.h>
+seL4_timer_t * sel4osapi_arch_get_default_timer(vka_t *vka, vspace_t *vspace, simple_t *simple, seL4_CPtr notification) {
+    /* Map the HPET so we can query its proprties */
+    seL4_timer_t *retVal;
+    vka_object_t frame;
+    void *vaddr;
+    uintptr_t timer_paddr = 0x11111111;
+    vaddr = sel4platsupport_map_frame_at(vka, vspace, timer_paddr, seL4_PageBits, &frame);
+    int irq;
+    int vector;
+    ZF_LOGF_IF(vaddr == NULL, "Failed to map HPET paddr");
+    if (!hpet_supports_fsb_delivery(vaddr)) {
+        if (!config_set(CONFIG_IRQ_IOAPIC)) {
+            ZF_LOGF("HPET does not support FSB delivery and we are not using the IOAPIC");
+        }
+        uint32_t irq_mask = hpet_ioapic_irq_delivery_mask(vaddr);
+        /* grab the first irq */
+        irq = FFS(irq_mask) - 1;
+    } else {
+        irq = -1;
+    }
+    vector = DEFAULT_TIMER_INTERRUPT;
+    vspace_unmap_pages(vspace, vaddr, 1, seL4_PageBits, VSPACE_PRESERVE);
+    vka_free_object(vka, &frame);
+    retVal = sel4platsupport_get_hpet_paddr(vspace, simple, vka, timer_paddr, notification, irq, vector);
+    ZF_LOGF_IF(retVal == NULL, "Failed to get HPET timer");
+    return retVal;
+}
+
+#else
+#error Unsupported architecture
+#endif
+
+
 void
 sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
 {
-    const char * const METHOD_NAME = "sel4osapi_sysclock_initialize";
     vka_t *vka = sel4osapi_system_get_vka();
     simple_t *simple = sel4osapi_system_get_simple();
     vspace_t *vspace = sel4osapi_system_get_vspace();
@@ -370,38 +423,45 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
 
     sysclock->time = 0;
 
-    printf("%s: Starting...\n", METHOD_NAME);
+    syslog_trace("Initializing system clock...");
     error = vka_alloc_endpoint(vka,&sysclock->server_ep_obj);
     assert(error == 0);
 
-    printf("%s: Allocating notification endpoint\n", METHOD_NAME);
+    syslog_trace("Allocating notification endpoint");
     error = vka_alloc_notification(vka,&sysclock->timer_aep);
     assert(error == 0);
 
-    printf("%s: Calling get_default_timer...\n", METHOD_NAME);
-    sysclock->native_timer = sel4platsupport_get_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr);
-    assert(sysclock->native_timer != NULL);
+    /*
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    doMallocTestNoFree();
+    abort();
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
 
-    printf("%s: Allocating simple pool...\n", METHOD_NAME);
+    syslog_trace("Allocating simple pool for timeouts: max_entries=%d, sizeof(each)=%d", SEL4OSAPI_SYSCLOCK_MAX_ENTRIES, sizeof(struct timeout_entry));
     sysclock->schedule = simple_pool_new(SEL4OSAPI_SYSCLOCK_MAX_ENTRIES,sizeof(struct timeout_entry), timer_entry_init, NULL, timer_entry_compare);
     assert(sysclock->schedule != NULL);
 
-    printf("%s: Creating mutex\n", METHOD_NAME);
+    syslog_trace("Calling get_default_timer...");
+    sysclock->native_timer = sel4osapi_arch_get_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr);
+    assert(sysclock->native_timer != NULL);
+
+    syslog_trace("Creating mutex");
     sysclock->timeouts_mutex = sel4osapi_mutex_create();
     assert(sysclock->timeouts_mutex != NULL);
 
-    printf("%s: Creating timer thread...\n", METHOD_NAME);
+    syslog_trace("Creating timer thread...");
     sysclock->timer_thread = sel4osapi_thread_create(
                                 "sysclock::timer", sel4osapi_sysclock_timer_thread, sysclock, seL4_MaxPrio - 1);
     assert(sysclock->timer_thread);
 
-    printf("%s: Creating server thread...\n", METHOD_NAME);
+    syslog_trace("Creating server thread...");
     sysclock->server_thread  = sel4osapi_thread_create(
                                 "sysclock::server", sel4osapi_sysclock_server_thread, sysclock, seL4_MaxPrio - 1);
     assert(sysclock->server_thread);
 
     /* store cap to sysclock in root task's env */
-    printf("%s: Storing sysclock cap in root task's env...\n", METHOD_NAME);
+    syslog_trace("Storing sysclock cap in root task's env...");
     {
         cspacepath_t scheduler_ep_path, minted_ep_path;
         error = vka_cspace_alloc(vka, &process->sysclock_server_ep);
@@ -413,7 +473,7 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
         assert(error == 0);
     }
 
-    printf("%s: Completed successfully\n", METHOD_NAME);
+    syslog_trace("Sysclock initialized successfully");
 }
 
 void

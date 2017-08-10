@@ -78,14 +78,14 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
                 semaphore->queued++;
                 queued = i+1;
 
-                syslog_trace_a("queued thread %s on semaphore %x", current_thread->name, (unsigned int)semaphore);
+                syslog_trace("queued thread %s on semaphore %x", current_thread->name, (unsigned int)semaphore);
 
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
                 if (timeout_ms > 0)
                 {
                     timeout_id = sel4osapi_sysclock_schedule_timeout(0, timeout_ms, current_thread->wait_aep);
                     assert(timeout_id != seL4_CapNull);
-                    syslog_trace_a("scheduled timeout (%dms) for thread %s on semaphore %x", timeout_ms, current_thread->name, (unsigned int)semaphore);
+                    syslog_trace("scheduled timeout (%dms) for thread %s on semaphore %x", timeout_ms, current_thread->name, (unsigned int)semaphore);
                 }
 #endif
             }
@@ -102,7 +102,7 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
 
         semaphore->wait_queue[queued - 1] = seL4_CapNull;
 
-        syslog_trace_a("thread %s woke up on semaphore %x", current_thread->name, (unsigned int)semaphore);
+        syslog_trace("thread %s woke up on semaphore %x", current_thread->name, (unsigned int)semaphore);
 
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
         if (timeout_id != seL4_CapNull)
@@ -114,7 +114,7 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
         if (wait_result != WAIT_RESULT_OK)
         {
             sel4osapi_mutex_unlock(semaphore->mutex);
-            syslog_trace_a("thread %s TIMED OUT on semaphore %x (result=%d)", current_thread->name, (unsigned int)semaphore, wait_result);
+            syslog_trace("thread %s TIMED OUT on semaphore %x (result=%d)", current_thread->name, (unsigned int)semaphore, wait_result);
             return -1;
         }
     }
@@ -123,7 +123,7 @@ sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout_ms)
 
     sel4osapi_mutex_unlock(semaphore->mutex);
 
-    syslog_trace_a("thread %s took semaphore %x", current_thread->name, (unsigned int)semaphore);
+    syslog_trace("thread %s took semaphore %x", current_thread->name, (unsigned int)semaphore);
 
     return 0;
 }

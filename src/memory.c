@@ -14,7 +14,7 @@
 void*
 sel4osapi_heap_allocate(size_t size)
 {
-    return malloc(size);
+    return malloc(size+64);
 }
 
 void

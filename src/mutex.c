@@ -67,7 +67,7 @@ sel4osapi_mutex_lock(sel4osapi_mutex_t *mutex) {
          * be in this branch if we already held the mutex before entering this
          * function, so we don't need to release the mutex here.
          */
-        syslog_error_a("maximum number of recursion reached on mutex %x",(unsigned int)mutex);
+        syslog_error("maximum number of recursion reached on mutex %x",(unsigned int)mutex);
         return -1;
     }
     mutex->held++;

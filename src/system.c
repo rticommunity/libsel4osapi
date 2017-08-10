@@ -49,6 +49,27 @@ sel4osapi_system_get_instanceI()
 {
     return &sel4osapi_gv_system;
 }
+
+
+#define MEMTEST_BLOCK_MAX   2000
+#define MEMTEST_BLOCK_SIZE  16
+void doMallocTestNoFree() {
+    int i, j;
+    char *memBlock;
+    
+    printf("=[MallocTest]====================================================================================\n");
+    // Allocate MEMTEST_BLOCK_MAX blocks
+    for (i = 0; i < MEMTEST_BLOCK_MAX; ++i) {
+        // printf("\t#%02d...", i);
+        memBlock = malloc(MEMTEST_BLOCK_SIZE);
+        //printf("%p\n", memBlock);
+        for (j = 0; j < MEMTEST_BLOCK_SIZE; ++j) {
+            memBlock[j] = 0xab;
+        }
+    }
+    printf("===================================================================================[Malloc Test]=\n");
+}
+
 #endif
 
 /*
@@ -66,23 +87,27 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
     /* Assign a static buffer to malloc(), since
      * we don't have virtual memory yet. The size of
      * this buffer must be SEL4OSAPI_BOOTSTRAP_MEM_POOL_SIZE */
+    syslog_trace("Configuring morecore static area: %d Kb", SEL4OSAPI_BOOTSTRAP_MEM_POOL_SIZE/1024);
     morecore_area = malloc_static_mem_pool;
     morecore_size = SEL4OSAPI_BOOTSTRAP_MEM_POOL_SIZE;
 
     /* Create an instance of simple_t interface
      * using the bootinfo data provided by kernel */
+    syslog_trace("Initializing simple_default");
     simple_default_init_bootinfo(&system->simple, info);
 
     /* create a system allocator which will rely on
      * the simple_t instance to request kernel services.
      * The allocator uses the CSpace and VSpace of the
      * root_task, and all the available Untyped objects */
+    syslog_trace("Retrieving allocator...");
     system->allocator = bootstrap_use_current_simple(
             &system->simple, SEL4OSAPI_BOOTSTRAP_MEM_POOL_SIZE,
             bootstrap_mem_pool);
     assert(system->allocator);
 
     /* create a vka (interface for interacting with the underlying allocator) */
+    syslog_trace("Building VKA...");
     allocman_make_vka(&system->vka, system->allocator);
 
     /* create a vspace_t object to manage our VSpace.
@@ -95,6 +120,7 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
      * a specific vmem address when requested to map one or more pages.
      * Pages are 4K each.
      */
+    syslog_trace("Getting vspace...");
     error = sel4utils_bootstrap_vspace_with_bootinfo_leaky(&system->vspace,
         &system->vspace_alloc_data, simple_get_pd(&system->simple), &system->vka, info);
     assert(error == 0);
@@ -104,6 +130,7 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
      * of size SEL4OSAPI_SYSTEM_VMEM_SIZE. The vspace will not allocate
      * pages but simply mark the address range as RESERVED.
      */
+    syslog_trace("Reserving space for HEAP = %d Kb", SEL4OSAPI_VKA_VMEM_SIZE/1024);
     system->vmem_reservation = vspace_reserve_range(&system->vspace,
         SEL4OSAPI_VKA_VMEM_SIZE, seL4_AllRights, 1, &system->vmem_addr);
     assert(system->vmem_reservation.res);
@@ -113,6 +140,7 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
      * Instead, the allocator will create a new page table kernel object an
      * manually map pages into it at the addresses of the specified range.
      */
+    syslog_trace("Configuring virtual pool...");
     bootstrap_configure_virtual_pool(system->allocator, system->vmem_addr,
         SEL4OSAPI_VKA_VMEM_SIZE, simple_get_pd(&system->simple));
 
@@ -120,6 +148,7 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
      * malloc(). This virtual memory will also be manually managed by
      * the muslc implementation, we only set some global variables.
      */
+    syslog_trace("Allocating %d Kb for system vmem", SEL4OSAPI_SYSTEM_VMEM_SIZE / 1024);
     error =sel4utils_reserve_range_no_alloc(&system->vspace,
                 &muslc_brk_reservation_memory, SEL4OSAPI_SYSTEM_VMEM_SIZE, seL4_AllRights, 1, &muslc_brk_reservation_start);
     assert(error == 0);
@@ -127,6 +156,7 @@ sel4osapi_system_bootstrap_root(sel4osapi_system_t *system, void *bootstrap_mem_
     muslc_brk_reservation.res = &muslc_brk_reservation_memory;
     morecore_area = NULL;
     morecore_size = 0;
+    syslog_trace("Morecore configured as dynamic, init done!");
 }
 
 /*
@@ -195,7 +225,7 @@ static void
 sel4osapi_system_initialize_root_task_env(sel4osapi_system_t *system)
 {
     /* allocate a page to store the sel4osapi_process_env_t instance */
-    printf("%s: Allocating 1 page for with %d bits for env...\n", __FUNCTION__, PAGE_BITS_4K);
+    syslog_trace("Allocating 1 page for with %d bits for env...", PAGE_BITS_4K);
     system->env = (sel4osapi_process_env_t*) vspace_new_pages(&system->vspace, seL4_AllRights, 1, PAGE_BITS_4K);
     assert(system->env != NULL);
 
@@ -211,11 +241,11 @@ sel4osapi_system_initialize_root_task_env(sel4osapi_system_t *system)
     snprintf(system->env->name, SEL4OSAPI_USER_PROCESS_NAME_MAX_LEN, "%s", "root_task");
     system->env->idling_aep = system->idling_aep.capPtr;
 
-    printf("%s: Allocating simple pool for thread...\n", __FUNCTION__);
+    syslog_trace("Allocating simple pool for thread... - count=%d, size=%d", SEL4OSAPI_MAX_THREADS_PER_PROCESS, sizeof(sel4osapi_thread_t));
     system->env->threads = simple_pool_new(SEL4OSAPI_MAX_THREADS_PER_PROCESS, sizeof(sel4osapi_thread_t), NULL, NULL, NULL);
     assert(system->env->threads);
 
-    printf("%s Completed successfully\n", __FUNCTION__);
+    syslog_trace("Root task environment successfully initialized");
 }
 
 /*
@@ -226,7 +256,7 @@ sel4osapi_system_initialize_root_task_env(sel4osapi_system_t *system)
 static void
 sel4osapi_system_initialize_main_thread(sel4osapi_system_t *system)
 {
-    snprintf(system->main_thread.info.name,SEL4OSAPI_THREAD_NAME_MAX_LEN,"p-%02d-main",system->env->pid);
+    snprintf(system->main_thread.info.name,SEL4OSAPI_THREAD_NAME_MAX_LEN,"p-%02d-main", system->env->pid);
     system->main_thread.info.arg = NULL;
     system->main_thread.info.tls = NULL;
     system->main_thread.info.tid = 0;
@@ -269,24 +299,23 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     /* check that we have a bootstrap buffer*/
     assert(bootstrap_mem_pool != NULL);
 
-   
-    printf("%s: Start\n", __FUNCTION__);
+    syslog_trace("Initializing system resources...");
     system = sel4osapi_system_get_instanceI();
 
-    printf("%s: Bootstrapping system root...\n", __FUNCTION__);
+    syslog_trace("Bootstrapping system root...");
     sel4osapi_system_bootstrap_root(system, bootstrap_mem_pool);
 
-    printf("%s: Initializing global mutex...\n", __FUNCTION__);
+    syslog_trace("Initializing global mutex...");
     sel4osapi_system_initialize_global_mutex(system);
 
-    printf("%s: Allocating AEP for root task 1/2\n", __FUNCTION__);
+    syslog_trace("Allocating AEP for root task 1/2");
     {
-        /* allocate an AEP for the root task to idle on */
+        /* allocate an asynchronous endpoint for the root task to idle on */
         vka_object_t aep_obj = { 0 };
         error = vka_alloc_notification(&system->vka, &aep_obj);
         assert(error == 0);
 
-        printf("%s: Allocating AEP for root task 2/2\n", __FUNCTION__);
+        syslog_trace("Allocating AEP for root task 2/2");
         vka_cspace_make_path(&system->vka, aep_obj.cptr, &system->idling_aep);
     }
     {
@@ -298,35 +327,38 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
         UNUSED unsigned int reserve_num = 0;
 
         /* Reserve some memory for the root_task (we'll free it after allocating untypeds for the process) */
-        printf("%s: Allocating untyped memory for root task\n", __FUNCTION__);
+        syslog_trace("Allocating untyped memory for root task");
         reserve_num = sel4osapi_util_allocate_untypeds(&system->vka, root_task_uts, SEL4OSAPI_ROOT_TASK_UNTYPED_MEM_SIZE, ROOT_TASK_NUM_UNTYPEDS);
-        printf("%s: \t-> %d bytes allocated\n", __FUNCTION__, reserve_num);
+        syslog_trace("\t-> %d bytes allocated", reserve_num);
 
         /* Now allocate everything else for the user processes */
-        printf("%s: Allocating untyped memory for user process\n", __FUNCTION__);
+        syslog_trace("Allocating untyped memory for user process");
         system->user_untypeds_num = sel4osapi_util_allocate_untypeds(&system->vka, system->user_untypeds,
                                             UINT_MAX, ARRAY_SIZE(system->user_untypeds));
-        printf("%s: \t-> %d bytes allocated\n", __FUNCTION__, system->user_untypeds_num);
+        syslog_trace("\t-> %d bytes allocated", system->user_untypeds_num);
 
         /* Fill out the size_bits list */
-        printf("%s: Initializing size bits list...\n", __FUNCTION__);
+        syslog_trace("Initializing size bits list...");
         for (i = 0; i < system->user_untypeds_num; i++) {
             system->user_untypeds_size_bits[i] = system->user_untypeds[i].size_bits;
         }
         /* Return reserve memory */
-        printf("%s: Release reserved memory...\n", __FUNCTION__);
+        syslog_trace("Release reserved memory...");
         for (i = 0; i < reserve_num; i++) {
             vka_free_object(&system->vka, &root_task_uts[i]);
         }
         assert(system->user_untypeds_num > 0);
         /* initialize untypeds allocation map */
-        printf("%s: Initializing allocation map...\n", __FUNCTION__);
+        syslog_trace("Initializing allocation map...");
         for (i = 0; i < system->user_untypeds_num; ++i) {
             system->user_untypeds_allocation[i] = 0;
         }
     }
+    
+   
+
     {
-        printf("%s: Creating simple pool...\n", __FUNCTION__);
+        syslog_trace("Creating simple pool: count=%d, size=%d...", SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t));
         system->processes = simple_pool_new(SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t), NULL, NULL, NULL);
         assert(system->processes != NULL);
     }
@@ -342,35 +374,40 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
         sel4utils_elf_reserve(NULL, IMAGE_NAME, elf_regions);
     }
 #endif
-    printf("%s: Initializing root task envornment...\n", __FUNCTION__);
+    
+    syslog_trace("Initializing root task envornment...");
     sel4osapi_system_initialize_root_task_env(system);
 
-    printf("%s: Initializing main thread...\n", __FUNCTION__);
+    syslog_trace("Initializing main thread...");
     sel4osapi_system_initialize_main_thread(system);
 
-    printf("%s: Initializing logger...\n", __FUNCTION__);
+    syslog_trace("Initializing logger...");
     sel4osapi_log_initialize();
 
+    // doMallocTestNoFree();
+    // abort();
+  
+
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
-    printf("%s: Initializing sysclock...\n", __FUNCTION__);
+    syslog_trace("Initializing sysclock...");
     sel4osapi_sysclock_initialize(&system->sysclock);
 
-    printf("%s: Starting sysclock...\n", __FUNCTION__);
+    syslog_trace("Starting sysclock...");
     sel4osapi_sysclock_start(&system->sysclock);
 #endif
 
-    printf("%s: Initializing IPC Server...\n", __FUNCTION__);
+    syslog_trace("Initializing IPC Server...");
     sel4osapi_ipcserver_initialize(&system->ipc);
 
-    printf("%s: Initializing I/O...\n", __FUNCTION__);
+    syslog_trace("Initializing I/O...");
     sel4osapi_io_initialize();
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL
-    printf("%s: Initializing I/O...\n", __FUNCTION__);
+    syslog_trace("Initializing serial port...");
     sel4osapi_io_serial_initialize(&system->serial, system->env->priority);
 #endif
 
-    printf("%s: Completed successfully\n", __FUNCTION__);
+    syslog_trace("\nCompleted successfully");
     return seL4_NoError;
 }
 
@@ -410,7 +447,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
      * the process's arguments */
     assert(bootstrap_mem_pool != NULL && argc == 3 && argv != NULL);
 
-    printf("FABDEBUG> [hello] %s: Initializing sel4osapi\n", __FUNCTION__); 
+    syslog_trace("Initializing user process..."); 
     /* parse received args */
     endpoint = (seL4_CPtr) atoi(argv[2]);
     /* wait for a message from root_task
@@ -418,31 +455,30 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
 
     info = seL4_Recv(endpoint, &badge);
 
-    printf("FABDEBUG> [hello] %s: Got env\n", __FUNCTION__); 
     /* check the label is correct */
     assert(seL4_MessageInfo_get_label(info) == seL4_Fault_NullFault);
     assert(seL4_MessageInfo_get_length(info) == 1);
     env = (sel4osapi_process_env_t*) seL4_GetMR(0);
     assert(env != 0);
 
-    printf("FABDEBUG> [hello] %s: Calling system_bootstrap_user\n", __FUNCTION__); 
+    syslog_trace("Calling system_bootstrap_user");
 
     sel4osapi_system_bootstrap_user(system, bootstrap_mem_pool, env);
 
-    printf("FABDEBUG> [hello] %s: Calling system_initialize_global_mutex\n", __FUNCTION__); 
+    syslog_trace("Calling system_initialize_global_mutex");
     sel4osapi_system_initialize_global_mutex(system);
 
-    printf("FABDEBUG> [hello] %s: Calling simple_pool_new\n", __FUNCTION__); 
+    syslog_trace("Calling simple_pool_new");
     system->env->threads = simple_pool_new(SEL4OSAPI_MAX_THREADS_PER_PROCESS, sizeof(sel4osapi_thread_t), NULL, NULL, NULL);
     assert(system->env->threads);
 
-    printf("FABDEBUG> [hello] %s: Calling system_initialize_main_thread\n", __FUNCTION__); 
+    syslog_trace("Calling system_initialize_main_thread");
     sel4osapi_system_initialize_main_thread(system);
 
-    printf("FABDEBUG> [hello] %s: Calling log_initialize\n", __FUNCTION__); 
+    syslog_trace("Calling log_initialize");
     sel4osapi_log_initialize();
 
-    printf("FABDEBUG> [hello] %s: Creating semaphores...\n", __FUNCTION__); 
+    syslog_trace("Creating semaphores...");
     {
         assert(env->ipcclient.rx_buf);
         assert(env->ipcclient.tx_buf);
@@ -454,7 +490,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
         assert(env->ipcclient.tx_buf_avail);
     }
 #ifdef CONFIG_LIB_OSAPI_NET
-    printf("FABDEBUG> [hello] %s: Creating network mutex...\n", __FUNCTION__); 
+    syslog_trace("Creating network mutex...");
     {
         env->udp_iface.mutex = sel4osapi_mutex_create();
         assert(env->udp_iface.mutex);
@@ -464,7 +500,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
     }
 #endif
 #ifdef CONFIG_LIB_OSAPI_SERIAL
-    printf("FABDEBUG> [hello] %s: Creating serial semaphore...\n", __FUNCTION__); 
+    syslog_trace("Creating serial semaphore...");
     {
         assert(env->serial.buf);
         assert(env->serial.buf_size > 0);
@@ -473,7 +509,7 @@ sel4osapi_system_initialize_process(void *bootstrap_mem_pool, int argc, char **a
     }
 #endif
 
-    printf("FABDEBUG> [hello] %s: Init completed successfully\n", __FUNCTION__); 
+    syslog_trace("Init completed successfully");
     return seL4_NoError;
 }
 
@@ -488,7 +524,7 @@ sel4osapi_idle()
     sel4osapi_system_t *system = sel4osapi_system_get_instanceI();
     seL4_Word sender_badge = 0;
 
-    syslog_info("idle...");
+    syslog_info("Idle...");
     seL4_Wait(system->env->idling_aep, &sender_badge);
 }
 

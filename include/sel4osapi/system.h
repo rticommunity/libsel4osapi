@@ -12,7 +12,7 @@
 #ifndef SEL4OSAPI_SYSTEM_H_
 #define SEL4OSAPI_SYSTEM_H_
 
-/*
+/**
  * \brief Type representing the system's basic resources.
  *
  * sel4osapi creates a single instance of this type in each

@@ -12,14 +12,8 @@
 #include <sel4osapi/osapi.h>
 
 
-typedef struct sel4osapi_log
-{
-    unsigned char init;
-    sel4osapi_mutex_t *mutex;
-} sel4osapi_log_t;
+sel4osapi_mutex_t * sel4osapi_gv_logmutex = NULL;
 
-
-sel4osapi_log_t sel4osapi_gv_log = { .init = 0, .mutex = NULL };
 sel4osapi_loglevel_t sel4osapi_gv_loglevel = SEL4OSAPI_LOG_LEVEL_INFO;
 
 void
@@ -58,28 +52,38 @@ sel4osapi_syslog_monitor_thread(sel4osapi_thread_t *thread)
 void
 sel4osapi_log_set_level(sel4osapi_loglevel_t level)
 {
+    assert((level >= SEL4OSAPI_LOG_LEVEL_ERROR) && (level <= SEL4OSAPI_LOG_LEVEL_TRACE));
     sel4osapi_gv_loglevel = level;
 }
 
 int
 sel4osapi_log_initialize()
 {
-    sel4osapi_gv_log.mutex = sel4osapi_mutex_create();
-    assert(sel4osapi_gv_log.mutex != NULL);
+    if (!sel4osapi_gv_logmutex) {
+        sel4osapi_gv_logmutex = sel4osapi_mutex_create();
+        assert(sel4osapi_gv_logmutex != NULL);
+    } else {
+        syslog_warn("OSAPI Syslog initialized more than once, ignoring subsequent initializations...");
+    }
     return 0;
 }
 
 void
 sel4osapi_log_lock()
 {
-    assert(sel4osapi_gv_log.mutex);
-    int error = sel4osapi_mutex_lock(sel4osapi_gv_log.mutex);
-    assert(!error);
+    if (sel4osapi_gv_logmutex) {
+        int error = sel4osapi_mutex_lock(sel4osapi_gv_logmutex);
+        assert(!error);
+    }
 }
 
 void
 sel4osapi_log_unlock()
 {
-    assert(sel4osapi_gv_log.mutex);
-    sel4osapi_mutex_unlock(sel4osapi_gv_log.mutex);
+    if (sel4osapi_gv_logmutex) {
+        assert(sel4osapi_gv_logmutex);
+        sel4osapi_mutex_unlock(sel4osapi_gv_logmutex);
+    }
 }
+
+

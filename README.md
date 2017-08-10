@@ -8,6 +8,7 @@ A library for the provisioning of basic system services on seL4.
 * [Installation](#installation)
 * [Building](#building)
 * [Dependencies](#dependencies)
+* [Issues with seL4 5.2.x](#issues52x)
 * [License](#license)
 * [Acknowledgement](#acknowledgment)
 
@@ -108,16 +109,16 @@ The following libraries must be available and linked into your system image:
   - `libutils`
   - `liblwip` (if you wish to enable the IP/UDP networking support)
   - `libethdrivers` (if you actually want to use the network stack on some physical
-    hardware - ie. the SabreListe i.MX6 board).
+    hardware - ie. the SabreLite i.MX6 board).
 
 The library was developed using the `1.0.x-compatible` branch of the seL4 kernel
-and the seL4 user-space libraries.
+and the seL4 user-space libraries, then updated to seL4 branch '5.2.x-compatible'.
 
-Refer to (Newer kernel support)(#newer-kernel-support) for more information on
-how to port `libsel4osapi` to more recent versions of the seL4 kernel.
+## Working with seL4 1.0.x branch:
+If you are using the seL4 1.0.x branch, use the '1.0.x-compatible' branch of libsel4osapi.
 
 The following is an example of the required `repo` manifest entries to support
-`libsel4osapi`:
+`libsel4osapi` for seL4 1.0.x-compatible:
 
 ```xml
 <remote name="seL4" fetch="https://github.com/sel4"/>
@@ -153,6 +154,72 @@ The following is an example of the required `repo` manifest entries to support
     remote="savannah" revision="refs/tags/STABLE-1_4_1" />
 
 ```
+
+## Working with seL4 5.2.x branch:
+If you are using the seL4 5.2.x branch, use the '5.2.x-compatible' branch of libsel4osapi.
+
+The following is an example of the required `repo` manifest entries to support
+`libsel4osapi` for seL4 5.2.x-compatible:
+
+```xml
+<remote name="seL4" fetch="https://github.com/sel4"/>
+<remote name="savannah" fetch="git://git.savannah.nongnu.org"/>
+
+<default revision="5.2.x-compatible"        remote="seL4"/>
+
+<!-- seL4 user-space libraries from Data61-->
+<project name="seL4.git"                    path="kernel"
+         revision="refs/tags/5.2.0">
+    <linkfile src="libsel4"                 dest="libs/libsel4"/>
+</project>
+<project name="musllibc.git"                path="libs/libmuslc" revision="sel4"/>
+<project name="seL4_libs.git" path="projects/seL4_libs">
+    <linkfile src="libsel4allocman" dest="libs/libsel4allocman" />
+    <linkfile src="libsel4debug" dest="libs/libsel4debug" />
+    <linkfile src="libsel4muslcsys" dest="libs/libsel4muslcsys" />
+    <linkfile src="libsel4platsupport" dest="libs/libsel4platsupport" />
+    <linkfile src="libsel4simple" dest="libs/libsel4simple" />
+    <linkfile src="libsel4simple-default" dest="libs/libsel4simple-default" />
+    <linkfile src="libsel4test" dest="libs/libsel4test" />
+    <linkfile src="libsel4utils" dest="libs/libsel4utils" />
+    <linkfile src="libsel4vka" dest="libs/libsel4vka" />
+    <linkfile src="libsel4vspace" dest="libs/libsel4vspace" />
+    <linkfile src="libsel4sync" dest="libs/libsel4sync" />
+</project>
+
+<project name="util_libs.git" path="projects/util_libs">
+    <linkfile src="libcpio" dest="libs/libcpio" />
+    <linkfile src="libelf"  dest="libs/libelf" />
+    <linkfile src="libplatsupport" dest="libs/libplatsupport" />
+    <linkfile src="libutils" dest="libs/libutils" />
+</project>
+
+<project name="libethdrivers" path="libs/libethdrivers" revision="master"/>
+<project name="lwip.git" remote="savannah"
+          path="libs/liblwip/lwip-1.4.1" revision="refs/tags/STABLE-1_4_1" />
+
+```
+
+
+
+
+# Known issues with seL4 5.2.x
+There are two known issues of libsel4osapi library that might cause problems with seL4 5.2.x-compatible and newer (there might be issues also on older version of seL4, depending on the version used).
+
+
+## Dynamic memory
+In libsel4utils project (version 5.2.x-compatible) the vspace functions uses malloc() to dynamically create a temporary reservation object.
+Unfortunately if the system end up in an out of memory condition (where expand_heap() is called) and malloc() is configured to dynamicall map pages through vspace, the system might enter in an infinite loop.
+Solution requires a patch to the vspace() to avoid circular dependency with malloc. At the time of the writing of this document, the seL4 community is aware of the problem and agreed to fix it.
+
+## Network Driver
+The network driver (libethdrivers) have some conflicts with version 5.2.x-compatible of libplatsupport when using the Sabre Lite i.MX6 board.
+In librplasupport, the I/O of the board is mapped in function mux_sys_init() (file src/plat/imx6/mux.c). When the ethernet driver initialzes (function setup_iomux_enet in file libethdrivers/src/plat/imx6/uboot/mx6qsabrelite.c), it attempts to reserve the same I/O space, causing a capability fault. 
+The driver need to be updated to use the new capability of the libplatsupport library, but as a temporary solution, you can disable the mapping of the I/O in the setup_iomux_enet() function by commenting out the following line:
+```
+	    MAP_IF_NULL(io_ops, IMX6_IOMUXC, _mux.iomuxc);
+```
+
 
 # License
 

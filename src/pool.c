@@ -19,7 +19,7 @@ simple_pool_new(int size, size_t el_size, simple_pool_init_el_fn init_fn, void *
     assert(size > 0);
     assert(el_size > 0);
 
-    pool = (simple_pool_t *) malloc(sizeof(simple_pool_t));
+    pool = (simple_pool_t *) malloc(sizeof(simple_pool_t) + 64);
     assert(pool != NULL);
 
     pool->el_size = el_size;
@@ -34,7 +34,7 @@ simple_pool_new(int size, size_t el_size, simple_pool_init_el_fn init_fn, void *
     int i = 0;
 
     for (i = 0; i < pool->size; ++i) {
-        void *el = malloc(pool->el_size);
+        void *el = malloc(pool->el_size + 64);
         assert(el != NULL);
         if (pool->init_fn)
         {

@@ -54,7 +54,7 @@ simple_list_insert_node(simple_list_t *head, simple_list_t *node)
 simple_list_t*
 simple_list_insert(simple_list_t *head, void *el)
 {
-    simple_list_t *new_node = (simple_list_t*) malloc(sizeof(simple_list_t));
+    simple_list_t *new_node = (simple_list_t*) malloc(sizeof(simple_list_t)+64);
     assert(new_node != NULL);
     new_node->el = el;
 
@@ -137,7 +137,7 @@ simple_list_tester_print(simple_list_t *entries, simple_list_t *free_entries)
     simple_list_t *cursor = NULL;
 
 #define print_entry_val(cursor_, val_) \
-    syslog_info_a("[%x][%d]\t[p=%x][n=%x]",(unsigned int) (cursor_), val_, (unsigned int) (cursor_)->prev, (unsigned int) (cursor_)->next);
+    syslog_info("[%x][%d]\t[p=%x][n=%x]",(unsigned int) (cursor_), val_, (unsigned int) (cursor_)->prev, (unsigned int) (cursor_)->next);
 
     syslog_info("-----current entries-----");
 
@@ -181,7 +181,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
         int *n = (int*) sel4osapi_heap_allocate(sizeof(int));
         *n = 0;
         free_entries = simple_list_insert(free_entries, n);
-        syslog_info_a("allocated new entry [%x]", (unsigned int) free_entries);
+        syslog_info("allocated new entry [%x]", (unsigned int) free_entries);
     }
 
     i = 0;
@@ -192,7 +192,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
     {
         op = rand() % 2;
 
-        syslog_info_a("performing op=%d",op);
+        syslog_info("performing op=%d",op);
 
         switch (op) {
             case 0:
@@ -212,7 +212,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
 
                 entries = simple_list_insert_node(entries, entry);
 
-                syslog_info_a("added entry [%x][%d]", (unsigned int) entry, *n);
+                syslog_info("added entry [%x][%d]", (unsigned int) entry, *n);
 
                 break;
             }
@@ -231,7 +231,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
                     int val = rand() % pool_size + 1;
                     cursor = entries;
 
-                    syslog_info_a("looking for n=%d",val);
+                    syslog_info("looking for n=%d",val);
 
                     while (cursor != NULL)
                     {
@@ -252,7 +252,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
                 entries = simple_list_unlink(entries, entry);
                 *((int*)entry->el) = 0;
                 free_entries = simple_list_insert_node(free_entries, entry);
-                syslog_info_a("freed entry [%x][%d]", (unsigned int) entry, el_n);
+                syslog_info("freed entry [%x][%d]", (unsigned int) entry, el_n);
 
                 break;
             }

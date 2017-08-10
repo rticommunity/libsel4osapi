@@ -30,7 +30,7 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
     while (thread->active)
     {
         seL4_Wait(iface->irq_aep,NULL);
-        /*syslog_trace_a("handling IRQ %d",iface->driver->irq_num);*/
+        /*syslog_trace("handling IRQ %d",iface->driver->irq_num);*/
         error = sel4osapi_mutex_lock(iface->mutex);
         assert(!error);
 
@@ -58,7 +58,7 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
 
         seL4_IRQHandler_Ack(iface->irq);
         sel4osapi_mutex_unlock(iface->mutex);
-        /*syslog_trace_a("IRQ %d handled",iface->driver->irq_num);*/
+        /*syslog_trace("IRQ %d handled",iface->driver->irq_num);*/
     }
 }
 
@@ -177,7 +177,7 @@ sel4osapi_network_initialize(sel4osapi_netstack_t *net, sel4osapi_ipcserver_t *i
 
     net->ipc = ipc;
 
-    syslog_info_a("initializing network interface [%s, irq=%d]", iface_name, iface_driver->irq_num)
+    syslog_info("initializing network interface [%s, irq=%d]", iface_name, iface_driver->irq_num)
 
     iface = sel4osapi_network_create_interface(net, iface_name, iface_driver);
     assert(iface);
@@ -187,7 +187,7 @@ sel4osapi_network_initialize(sel4osapi_netstack_t *net, sel4osapi_ipcserver_t *i
         ipaddr_aton(SEL4OSAPI_IP_GW_DEFAULT,        &gw);
         ipaddr_aton(SEL4OSAPI_IP_ADDR_DEFAULT,  &addr);
         ipaddr_aton(SEL4OSAPI_IP_MASK_DEFAULT, &mask);
-        syslog_info_a("adding virtual inteface: addr=%s, mask=%s, gw=%s", SEL4OSAPI_IP_ADDR_DEFAULT, SEL4OSAPI_IP_MASK_DEFAULT, SEL4OSAPI_IP_GW_DEFAULT);
+        syslog_info("adding virtual inteface: addr=%s, mask=%s, gw=%s", SEL4OSAPI_IP_ADDR_DEFAULT, SEL4OSAPI_IP_MASK_DEFAULT, SEL4OSAPI_IP_GW_DEFAULT);
         error = sel4osapi_netiface_add_vface(iface, &addr, &mask, &gw, seL4_True);
         assert(error == 0);
     }
