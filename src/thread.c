@@ -43,9 +43,10 @@ sel4osapi_thread_create(
 
 
     thread->fault_endpoint = env->fault_endpoint;
-    seL4_CapData_t data = seL4_CapData_Guard_new(0, seL4_WordBits - env->cspace_size_bits);
+    // seL4_CapData_t data = seL4_CapData_Guard_new(0, seL4_WordBits - env->cspace_size_bits);
+    seL4_Word data = seL4_CNode_CapData_new(0, seL4_WordBits - env->cspace_size_bits).words[0];
     error = sel4utils_configure_thread(vka, vspace, vspace, env->fault_endpoint,
-                                      priority, env->root_cnode, data, &thread->native);
+                                      env->root_cnode, data, &thread->native);
     assert(error == 0);
 
     thread->thread_routine = thread_routine;

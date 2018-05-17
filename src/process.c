@@ -201,7 +201,7 @@ sel4osapi_process_create(char *process_name, uint8_t priority)
     process->env = (sel4osapi_process_env_t*) vspace_new_pages(vspace, seL4_AllRights, 1, PAGE_BITS_4K);
 
     /* Configure new process */
-    error = sel4utils_configure_process(&process->native, vka, vspace, priority, process_name);
+    error = sel4utils_configure_process(&process->native, vka, vspace, process_name);
     assert(error == 0);
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL
@@ -432,10 +432,8 @@ seL4_CPtr
 sel4osapi_process_copy_cap_into(sel4osapi_process_t *process, vka_t *parent_vka, seL4_CPtr cap, seL4_CapRights_t rights)
 {
     seL4_CPtr minted_cap;
-    seL4_CapData_t cap_badge;
+    seL4_Word cap_badge = process->env->pid;
     cspacepath_t src_path;
-
-    cap_badge = seL4_CapData_Badge_new(process->env->pid);
 
     vka_cspace_make_path(parent_vka, cap, &src_path);
     minted_cap = sel4utils_mint_cap_to_process(&process->native, src_path, rights, cap_badge);

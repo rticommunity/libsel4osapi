@@ -30,7 +30,7 @@
  */
 typedef struct sel4osapi_sysclock
 {
-    seL4_timer_t *native_timer;
+    seL4_timer_t native_timer;
     uint32_t time;
     sel4osapi_thread_t *timer_thread;
     vka_object_t timer_aep;

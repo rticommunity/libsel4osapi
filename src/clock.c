@@ -311,7 +311,8 @@ sel4osapi_sysclock_timer_thread(sel4osapi_thread_info_t *thread)
     sel4osapi_sysclock_t *sysclock = (sel4osapi_sysclock_t *)thread->arg;
     vka_t *vka = sel4osapi_system_get_vka();
 
-    error = timer_periodic(sysclock->native_timer->timer, SEL4OSAPI_SYSCLOCK_PERIOD_MS * 1000 * 1000);
+    //error = timer_periodic(sysclock->native_timer->timer, SEL4OSAPI_SYSCLOCK_PERIOD_MS * 1000 * 1000);
+    error = ltimer_set_timeout(&sysclock->native_timer.ltimer, SEL4OSAPI_SYSCLOCK_PERIOD_MS * 1000 * 1000, TIMEOUT_PERIODIC);
     assert(error == 0);
 
     while (thread->active)
@@ -360,13 +361,20 @@ sel4osapi_sysclock_timer_thread(sel4osapi_thread_info_t *thread)
         sel4osapi_mutex_unlock(sysclock->timeouts_mutex);
 #endif
 
-        sel4_timer_handle_single_irq(sysclock->native_timer);
+        // sel4_timer_handle_single_irq(sysclock->native_timer);
+        {
+            ps_irq_t irq;
+            error = ltimer_get_nth_irq(&sysclock->native_timer.ltimer, 0, &irq);
+            assert(!error);
+            ltimer_handle_irq(&sysclock->native_timer.ltimer, &irq);
+        }
     }
 }
 
 extern void doMallocTestNoFree(void);
 
 
+#if 0
 #ifdef CONFIG_ARCH_ARM
 seL4_timer_t * sel4osapi_arch_get_default_timer(vka_t *vka, vspace_t *vspace, simple_t *simple, seL4_CPtr notification) {
     seL4_timer_t *retVal;
@@ -398,7 +406,8 @@ seL4_timer_t * sel4osapi_arch_get_default_timer(vka_t *vka, vspace_t *vspace, si
     } else {
         irq = -1;
     }
-    vector = DEFAULT_TIMER_INTERRUPT;
+    // vector = DEFAULT_TIMER_INTERRUPT;
+    vector = 0; // Default interrupt
     vspace_unmap_pages(vspace, vaddr, 1, seL4_PageBits, VSPACE_PRESERVE);
     vka_free_object(vka, &frame);
     retVal = sel4platsupport_get_hpet_paddr(vspace, simple, vka, timer_paddr, notification, irq, vector);
@@ -408,6 +417,7 @@ seL4_timer_t * sel4osapi_arch_get_default_timer(vka_t *vka, vspace_t *vspace, si
 
 #else
 #error Unsupported architecture
+#endif
 #endif
 
 
@@ -443,8 +453,9 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
     assert(sysclock->schedule != NULL);
 
     syslog_trace("Calling get_default_timer...");
-    sysclock->native_timer = sel4osapi_arch_get_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr);
-    assert(sysclock->native_timer != NULL);
+    // sysclock->native_timer = sel4osapi_arch_get_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr);
+    error = sel4platsupport_init_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr, &sysclock->native_timer);
+    assert(error == 0);
 
     syslog_trace("Creating mutex");
     sysclock->timeouts_mutex = sel4osapi_mutex_create();
@@ -468,8 +479,7 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
         assert(error == 0);
         vka_cspace_make_path(vka,sysclock->server_ep_obj.cptr, &scheduler_ep_path);
         vka_cspace_make_path(vka,process->sysclock_server_ep, &minted_ep_path);
-        seL4_CapData_t badge = seL4_CapData_Badge_new(666);
-        error = vka_cnode_mint(&minted_ep_path,&scheduler_ep_path,seL4_AllRights,badge);
+        error = vka_cnode_mint(&minted_ep_path,&scheduler_ep_path,seL4_AllRights, 666);
         assert(error == 0);
     }
 
