@@ -22,7 +22,7 @@ sel4osapi_thread_init_tls(sel4osapi_thread_t *thread)
 
 sel4osapi_thread_t*
 sel4osapi_thread_create(
-        char *name, sel4osapi_thread_routine_fn thread_routine, void *thread_arg, int priority)
+        const char *name, sel4osapi_thread_routine_fn thread_routine, void *thread_arg, int priority)
 {
     UNUSED int error;
     vka_t *vka = sel4osapi_system_get_vka();
@@ -139,6 +139,7 @@ sel4osapi_thread_sleep(uint32_t ms)
     assert(timeout_id != seL4_CapNull);
     return sel4osapi_sysclock_wait_for_timeout(timeout_id, thread->wait_aep, 0);
 #else
+    syslog_warn("SYSCLOCK not enabled, sel4osapi_thread_sleep is not going to do anything!");
     return 0;
 #endif
 }

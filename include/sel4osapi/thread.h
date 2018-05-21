@@ -107,7 +107,7 @@ typedef struct sel4osapi_thread
  */
 sel4osapi_thread_t*
 sel4osapi_thread_create(
-        char *name, sel4osapi_thread_routine_fn thread_routine, void *thread_arg, int priority);
+        const char *name, sel4osapi_thread_routine_fn thread_routine, void *thread_arg, int priority);
 
 /*
  * Start a thread.

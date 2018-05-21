@@ -19,16 +19,17 @@
 
 void
 sel4osapi_io_initialize(void) {
+#ifdef CONFIG_LIB_OSAPI_SERIAL
     int error = 0;
-
     vspace_t *vspace = sel4osapi_system_get_vspace();
     vka_t *vka = sel4osapi_system_get_vka();
-    ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
 
+    ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
     error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
     assert(error == 0);
     error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
     assert(error == 0);
+#endif
 }
 
 
