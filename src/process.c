@@ -201,7 +201,12 @@ sel4osapi_process_create(char *process_name, uint8_t priority)
     process->env = (sel4osapi_process_env_t*) vspace_new_pages(vspace, seL4_AllRights, 1, PAGE_BITS_4K);
 
     /* Configure new process */
-    error = sel4utils_configure_process(&process->native, vka, vspace, process_name);
+    //
+    // Since 9.0.0 sel4utils_configure_process does not accept the priority anymore.
+    // error = sel4utils_configure_process(&process->native, vka, vspace, process_name);
+    sel4utils_process_config_t config = process_config_default(process_name, seL4_CapInitThreadASIDPool);
+    process_config_priority(config, priority);
+    error = sel4utils_configure_process_custom(&process->native, vka, vspace, config);
     assert(error == 0);
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL

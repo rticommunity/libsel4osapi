@@ -45,8 +45,18 @@ sel4osapi_thread_create(
     thread->fault_endpoint = env->fault_endpoint;
     // seL4_CapData_t data = seL4_CapData_Guard_new(0, seL4_WordBits - env->cspace_size_bits);
     seL4_Word data = seL4_CNode_CapData_new(0, seL4_WordBits - env->cspace_size_bits).words[0];
-    error = sel4utils_configure_thread(vka, vspace, vspace, env->fault_endpoint,
-                                      env->root_cnode, data, &thread->native);
+
+    // Since verion 9.0 priority cannot be set directly using sel4utils_configure_thread
+    // error = sel4utils_configure_thread(vka, vspace, vspace, env->fault_endpoint, env->root_cnode, data, &thread->native);
+    //
+    sel4utils_thread_config_t config = {0};
+    config = thread_config_fault_endpoint(config, env->fault_endpoint);
+    config = thread_config_cspace(config, env->root_cnode, data);
+    config = thread_config_auth(config, simple_get_tcb(sel4osapi_system_get_simple()));
+    config = thread_config_priority(config, (uint8_t)priority);
+    config = thread_config_create_reply(config);
+    error = sel4utils_configure_thread_config(vka, vspace, vspace, config, &thread->native);
+
     assert(error == 0);
 
     thread->thread_routine = thread_routine;
