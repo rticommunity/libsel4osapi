@@ -11,8 +11,8 @@
 
 #include <sel4osapi/osapi.h>
 
-simple_list_t*
-simple_list_insert_node(simple_list_t *head, simple_list_t *node)
+sel4osapi_list_t*
+sel4osapi_list_insert_node(sel4osapi_list_t *head, sel4osapi_list_t *node)
 {
 #if SIMPLE_LIST_LIFO
     assert(node != NULL);
@@ -24,7 +24,7 @@ simple_list_insert_node(simple_list_t *head, simple_list_t *node)
     }
     head = node;
 #else
-    simple_list_t *cursor = NULL, *prev = NULL;
+    sel4osapi_list_t *cursor = NULL, *prev = NULL;
 
     assert(node != NULL);
 
@@ -51,20 +51,20 @@ simple_list_insert_node(simple_list_t *head, simple_list_t *node)
     return head;
 }
 
-simple_list_t*
-simple_list_insert(simple_list_t *head, void *el)
+sel4osapi_list_t*
+sel4osapi_list_insert(sel4osapi_list_t *head, void *el)
 {
-    simple_list_t *new_node = (simple_list_t*) malloc(sizeof(simple_list_t)+64);
+    sel4osapi_list_t *new_node = (sel4osapi_list_t*) malloc(sizeof(sel4osapi_list_t)+64);
     assert(new_node != NULL);
     new_node->el = el;
 
-    return simple_list_insert_node(head, new_node);
+    return sel4osapi_list_insert_node(head, new_node);
 }
 
-simple_list_t*
-simple_list_unlink(simple_list_t * head, simple_list_t *node)
+sel4osapi_list_t*
+sel4osapi_list_unlink(sel4osapi_list_t * head, sel4osapi_list_t *node)
 {
-    simple_list_t *prev, *next;
+    sel4osapi_list_t *prev, *next;
 
     assert(node != NULL);
     assert(head != NULL);
@@ -94,7 +94,7 @@ simple_list_unlink(simple_list_t * head, simple_list_t *node)
 }
 
 int
-simple_list_to_array(simple_list_t *list, void **array, int array_len_max, int *array_len_out)
+sel4osapi_list_to_array(sel4osapi_list_t *list, void **array, int array_len_max, int *array_len_out)
 {
     int i = 0;
 
@@ -112,9 +112,9 @@ simple_list_to_array(simple_list_t *list, void **array, int array_len_max, int *
 }
 
 void
-simple_list_print(simple_list_t *list, char *prefix)
+sel4osapi_list_print(sel4osapi_list_t *list, char *prefix)
 {
-    simple_list_t *cursor = NULL;
+    sel4osapi_list_t *cursor = NULL;
     int i = 0;
 
 #define print_entry(i_,cursor_) \
@@ -132,9 +132,9 @@ simple_list_print(simple_list_t *list, char *prefix)
 
 
 void
-simple_list_tester_print(simple_list_t *entries, simple_list_t *free_entries)
+sel4osapi_list_tester_print(sel4osapi_list_t *entries, sel4osapi_list_t *free_entries)
 {
-    simple_list_t *cursor = NULL;
+    sel4osapi_list_t *cursor = NULL;
 
 #define print_entry_val(cursor_, val_) \
     syslog_info("[%x][%d]\t[p=%x][n=%x]",(unsigned int) (cursor_), val_, (unsigned int) (cursor_)->prev, (unsigned int) (cursor_)->next);
@@ -169,24 +169,24 @@ simple_list_tester_print(simple_list_t *entries, simple_list_t *free_entries)
 }
 
 void
-simple_list_tester(sel4osapi_thread_info_t *thread)
+sel4osapi_list_tester(sel4osapi_thread_info_t *thread)
 {
     int i = 0;
     int op = 0;
-    simple_list_t *free_entries = NULL;
-    simple_list_t *entries = NULL;
+    sel4osapi_list_t *free_entries = NULL;
+    sel4osapi_list_t *entries = NULL;
     int pool_size = 5;
 
     for (i = 0; i < pool_size; ++i) {
         int *n = (int*) sel4osapi_heap_allocate(sizeof(int));
         *n = 0;
-        free_entries = simple_list_insert(free_entries, n);
+        free_entries = sel4osapi_list_insert(free_entries, n);
         syslog_info("allocated new entry [%x]", (unsigned int) free_entries);
     }
 
     i = 0;
 
-    simple_list_tester_print(entries, free_entries);
+    sel4osapi_list_tester_print(entries, free_entries);
 
     while (thread->active && i < 100)
     {
@@ -198,7 +198,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
             case 0:
             {
                 /* schedule an entry */
-                simple_list_t *entry = free_entries;
+                sel4osapi_list_t *entry = free_entries;
                 if (entry == NULL)
                 {
                     syslog_info("no more free entries");
@@ -206,11 +206,11 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
                 }
                 int *n = (int*) entry->el;
                 assert(*n == 0);
-                free_entries = simple_list_unlink(free_entries, entry);
+                free_entries = sel4osapi_list_unlink(free_entries, entry);
 
                 *n = i % pool_size + 1;
 
-                entries = simple_list_insert_node(entries, entry);
+                entries = sel4osapi_list_insert_node(entries, entry);
 
                 syslog_info("added entry [%x][%d]", (unsigned int) entry, *n);
 
@@ -219,7 +219,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
             case 1:
             {
                 /* return an entry */
-                simple_list_t *cursor = NULL, *entry = NULL;
+                sel4osapi_list_t *cursor = NULL, *entry = NULL;
 
                 if (entries == NULL)
                 {
@@ -249,9 +249,9 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
                 }
                 assert(entry != NULL);
                 int el_n = *((int*)entry->el);
-                entries = simple_list_unlink(entries, entry);
+                entries = sel4osapi_list_unlink(entries, entry);
                 *((int*)entry->el) = 0;
-                free_entries = simple_list_insert_node(free_entries, entry);
+                free_entries = sel4osapi_list_insert_node(free_entries, entry);
                 syslog_info("freed entry [%x][%d]", (unsigned int) entry, el_n);
 
                 break;
@@ -263,7 +263,7 @@ simple_list_tester(sel4osapi_thread_info_t *thread)
             }
         }
 
-        simple_list_tester_print(entries, free_entries);
+        sel4osapi_list_tester_print(entries, free_entries);
         i++;
 
     }

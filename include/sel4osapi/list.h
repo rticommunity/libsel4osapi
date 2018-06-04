@@ -9,8 +9,16 @@
  *
  */
 
-#ifndef SEL4OSAPI_LIST_H_
-#define SEL4OSAPI_LIST_H_
+/* TODO: 
+ *      sel4utils (https://github.com/seL4/util_libs) already have an
+ *      implementation of a linked list.
+ *      We should remove this list from OSAPI and use the other one
+ *      instead.
+ */
+
+
+#ifndef SEL4OSAPI_LINKED_LIST_H_
+#define SEL4OSAPI_LINKED_LIST_H_
 
 /* Defines the behavior of the list:
  *  LIFO - elements are inserted at the beginning
@@ -24,12 +32,12 @@
  * Data structure representing
  * a list/node.
  */
-typedef struct simple_list_node
+typedef struct sel4osapi_list_node
 {
     void *el;
-    struct simple_list_node *next;
-    struct simple_list_node *prev;
-} simple_list_t;
+    struct sel4osapi_list_node *next;
+    struct sel4osapi_list_node *prev;
+} sel4osapi_list_t;
 
 
 /** \brief Insert a new node into a list.
@@ -42,8 +50,8 @@ typedef struct simple_list_node
  * \param el        pointer to the element to insert into the list
  * \return          the (potentially) new head of the list.
  */
-simple_list_t*
-simple_list_insert(simple_list_t *head, void *el);
+sel4osapi_list_t*
+sel4osapi_list_insert(sel4osapi_list_t *head, void *el);
 
 
 /** \brief inserts a node in the list
@@ -56,8 +64,8 @@ simple_list_insert(simple_list_t *head, void *el);
  *
  * \return          the (potentially) new head of the list
  */
-simple_list_t*
-simple_list_insert_node(simple_list_t *head, simple_list_t *node);
+sel4osapi_list_t*
+sel4osapi_list_insert_node(sel4osapi_list_t *head, sel4osapi_list_t *node);
 
 /** \brief Remove a node from the list by unlinking it.
  *
@@ -68,8 +76,8 @@ simple_list_insert_node(simple_list_t *head, simple_list_t *node);
  * \param node      the node to remove
  * \return          the (potentially) new head of the ist
  */
-simple_list_t*
-simple_list_unlink(simple_list_t * head, simple_list_t *node);
+sel4osapi_list_t*
+sel4osapi_list_unlink(sel4osapi_list_t * head, sel4osapi_list_t *node);
 
 
 /** \brief Converts a simple list to an array of nodes
@@ -85,9 +93,9 @@ simple_list_unlink(simple_list_t * head, simple_list_t *node);
  * \return          this function always return 0
  */
 int
-simple_list_to_array(simple_list_t *head, void **array, int array_len_max, int *array_len_out);
+sel4osapi_list_to_array(sel4osapi_list_t *head, void **array, int array_len_max, int *array_len_out);
 
 void
-simple_list_print(simple_list_t *list, char *prefix);
+sel4osapi_list_print(sel4osapi_list_t *list, char *prefix);
 
-#endif /* SEL4OSAPI_LIST_H_ */
+#endif /* SEL4OSAPI_LINKED_LIST_H_ */
