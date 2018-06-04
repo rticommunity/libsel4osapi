@@ -20,6 +20,60 @@ sel4osapi_thread_init_tls(sel4osapi_thread_t *thread)
     seL4_SetUserData((seL4_Word)thread);
 }
 
+static void
+setup_fault_handler(sel4osapi_thread_t *thread)    // Can be NULL -> Use current thread
+{
+    int error;
+    sel4utils_thread_t fault_handler;
+    vka_object_t fault_ep = {0};
+    sel4osapi_system_t *env = sel4osapi_system_get_instanceI();
+    seL4_CPtr tcbCptr;      // The TCB of the thread we are setting the fault handler
+
+    if (!thread) {
+        thread = (sel4osapi_thread_t*)seL4_GetUserData();
+    }
+
+    // TCB not specified, use the one from the calling thread
+    tcbCptr = thread->native.tcb.cptr; //simple_get_tcb(&env->simple);
+
+    /* create an endpoint */
+    if (vka_alloc_endpoint(&env->vka, &fault_ep) != 0) {
+        ZF_LOGF("Failed to create fault ep\n");
+    }
+
+    /* set the fault endpoint for the current thread */
+    error = api_tcb_set_space(tcbCptr, fault_ep.cptr,
+                              simple_get_cnode(&env->simple), seL4_NilData, simple_get_pd(&env->simple),
+                              seL4_NilData);
+    ZF_LOGF_IFERR(error, "Failed to set fault ep for benchmark driver\n");
+
+    error = sel4utils_start_fault_handler(fault_ep.cptr,
+                                          &env->vka, &env->vspace, simple_get_cnode(&env->simple),
+                                          seL4_NilData,
+                                          "sel4osapi-fault-handler", &fault_handler);
+    ZF_LOGF_IFERR(error, "Failed to start fault handler");
+
+    error = seL4_TCB_SetPriority(fault_handler.tcb.cptr, 
+            simple_get_tcb(&env->simple), // tcbCptr
+            thread->info.priority); // seL4_MaxPrio);
+    ZF_LOGF_IFERR(error, "Failed to set prio for fault handler");
+
+    if (config_set(CONFIG_KERNEL_RT)) {
+        /* give it a sc */
+        error = vka_alloc_sched_context(&env->vka, &fault_handler.sched_context);
+        ZF_LOGF_IF(error, "Failed to allocate sc");
+
+        error = api_sched_ctrl_configure(simple_get_sched_ctrl(&env->simple, 0),
+                                         fault_handler.sched_context.cptr,
+                                         100 * US_IN_S, 100 * US_IN_S, 0, 0);
+        ZF_LOGF_IF(error, "Failed to configure sc");
+
+        error = api_sc_bind(fault_handler.sched_context.cptr, fault_handler.tcb.cptr);
+        ZF_LOGF_IF(error, "Failed to bind sc to fault handler");
+    }
+}
+
+
 sel4osapi_thread_t*
 sel4osapi_thread_create(
         const char *name, sel4osapi_thread_routine_fn thread_routine, void *thread_arg, int priority)
@@ -77,6 +131,10 @@ sel4osapi_thread_create(
 
     thread->info.wait_aep = thread->thread_aep.cptr;
     thread->info.ipc = (seL4_IPCBuffer*) thread->native.ipc_buffer_addr;
+
+    syslog_info("Thread '%s' (ID=%d) created: TCB=%8p (cptr=%08x), pri=%d", name, thread->info.tid, &thread->native.tcb, thread->native.tcb.cptr, priority);
+
+    setup_fault_handler(thread);
 
     /*env->threads_num++;*/
 
