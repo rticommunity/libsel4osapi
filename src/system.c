@@ -295,6 +295,8 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
 {
     int error = 0;
     sel4osapi_system_t *system;
+    vka_object_t aep_obj = { 0 };
+    int i;
     
     /* check that we have a bootstrap buffer*/
     assert(bootstrap_mem_pool != NULL);
@@ -309,20 +311,18 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     sel4osapi_system_initialize_global_mutex(system);
 
     syslog_trace("Allocating AEP for root task 1/2");
-    {
-        /* allocate an asynchronous endpoint for the root task to idle on */
-        vka_object_t aep_obj = { 0 };
-        error = vka_alloc_notification(&system->vka, &aep_obj);
-        assert(error == 0);
 
-        syslog_trace("Allocating AEP for root task 2/2");
-        vka_cspace_make_path(&system->vka, aep_obj.cptr, &system->idling_aep);
-    }
+    /* allocate an asynchronous endpoint for the root task to idle on */
+    error = vka_alloc_notification(&system->vka, &aep_obj);
+    assert(error == 0);
+
+    syslog_trace("Allocating AEP for root task 2/2");
+    vka_cspace_make_path(&system->vka, aep_obj.cptr, &system->idling_aep);
+
     {
         /* reserve untyped memory for user processes by
          * creating untyped memory objects using the VKA.
          */
-        int i;
         vka_object_t root_task_uts[ROOT_TASK_NUM_UNTYPEDS];
         UNUSED unsigned int reserve_num = 0;
 
@@ -354,26 +354,10 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
             system->user_untypeds_allocation[i] = 0;
         }
     }
-    
-   
 
-    {
-        syslog_trace("Creating simple pool: count=%d, size=%d...", SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t));
-        system->processes = simple_pool_new(SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t), NULL, NULL, NULL);
-        assert(system->processes != NULL);
-    }
-#if 0
-    {
-#define MAX_REGIONS     4
-#define IMAGE_NAME      "root_task"
-        sel4utils_elf_region_t elf_regions[MAX_REGIONS];
-        int num_elf_regions;
-
-        num_elf_regions = sel4utils_elf_num_regions(IMAGE_NAME);
-        assert(num_elf_regions < MAX_REGIONS);
-        sel4utils_elf_reserve(NULL, IMAGE_NAME, elf_regions);
-    }
-#endif
+    syslog_trace("Creating simple pool: count=%d, size=%d...", SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t));
+    system->processes = simple_pool_new(SEL4OSAPI_USER_PROCESS_MAX, sizeof(sel4osapi_process_t), NULL, NULL, NULL);
+    assert(system->processes != NULL);
     
     syslog_trace("Initializing root task envornment...");
     sel4osapi_system_initialize_root_task_env(system);
@@ -383,10 +367,6 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
 
     syslog_trace("Initializing logger...");
     sel4osapi_log_initialize();
-
-    // doMallocTestNoFree();
-    // abort();
-  
 
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
     syslog_trace("Initializing sysclock...");
@@ -399,15 +379,17 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     syslog_trace("Initializing IPC Server...");
     sel4osapi_ipcserver_initialize(&system->ipc);
 
+#if defined(CONFIG_LIB_OSAPI_NET) || defined(CONFIG_LIB_OSAPI_SERIAL)
     syslog_trace("Initializing I/O...");
-    sel4osapi_io_initialize();
+    sel4osapi_io_initialize(&system->io_ops);
+#endif
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL
     syslog_trace("Initializing serial port...");
     sel4osapi_io_serial_initialize(&system->serial, system->env->priority);
 #endif
 
-    syslog_trace("\nCompleted successfully");
+    syslog_trace("sel4osapi_system_initialize completed successfully");
     return seL4_NoError;
 }
 
