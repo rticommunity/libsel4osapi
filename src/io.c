@@ -18,15 +18,15 @@
 #include <string.h>
 
 void
-sel4osapi_io_initialize(void) {
-#ifdef CONFIG_LIB_OSAPI_SERIAL
+sel4osapi_io_initialize(ps_io_ops_t *io_ops) {
+#if defined(CONFIG_LIB_OSAPI_SERIAL) || defined(CONFIG_LIB_OSAPI_NET)
     int error = 0;
     vspace_t *vspace = sel4osapi_system_get_vspace();
     vka_t *vka = sel4osapi_system_get_vka();
 
-    ps_io_ops_t *io_ops = sel4osapi_system_get_io_ops();
     error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
     assert(error == 0);
+    // FABDEBUG - set up a default DMA manager
     error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
     assert(error == 0);
 #endif
@@ -75,7 +75,7 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
             syslog_info("new serial request: client=%d, op=%d, dev=%d, size=%d",
                             client_id, opcode, devid, op_size);
 
-            simple_list_t *cursor = server->clients->entries;
+            sel4osapi_list_t *cursor = server->clients->entries;
             while (cursor != NULL)
             {
                 client = (sel4osapi_serialclient_t*) cursor->el;

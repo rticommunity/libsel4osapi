@@ -14,7 +14,7 @@
 
 
 void
-sel4osapi_io_initialize(void);
+sel4osapi_io_initialize(ps_io_ops_t *io_ops);
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL
 
