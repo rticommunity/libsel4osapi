@@ -40,7 +40,7 @@ simple_pool_new(int size, size_t el_size, simple_pool_init_el_fn init_fn, void *
         {
             pool->init_fn(el, pool->init_arg);
         }
-        pool->free_entries = simple_list_insert(pool->free_entries, el);
+        pool->free_entries = sel4osapi_list_insert(pool->free_entries, el);
     }
 
     return pool;
@@ -50,7 +50,7 @@ simple_pool_new(int size, size_t el_size, simple_pool_init_el_fn init_fn, void *
 void*
 simple_pool_alloc(simple_pool_t *pool)
 {
-    simple_list_t *entry = simple_pool_alloc_entry(pool);
+    sel4osapi_list_t *entry = simple_pool_alloc_entry(pool);
     if (entry == NULL)
     {
         return NULL;
@@ -58,10 +58,10 @@ simple_pool_alloc(simple_pool_t *pool)
     return entry->el;
 }
 
-simple_list_t*
+sel4osapi_list_t*
 simple_pool_alloc_entry(simple_pool_t *pool)
 {
-    simple_list_t *entry = NULL;
+    sel4osapi_list_t *entry = NULL;
 
     assert(pool != NULL);
 
@@ -76,14 +76,14 @@ simple_pool_alloc_entry(simple_pool_t *pool)
 
     assert(entry->el != NULL);
 
-    pool->free_entries = simple_list_unlink(pool->free_entries, entry);
+    pool->free_entries = sel4osapi_list_unlink(pool->free_entries, entry);
 
     if (pool->init_fn)
     {
         pool->init_fn(entry->el, pool->init_arg);
     }
 
-    pool->entries = simple_list_insert_node(pool->entries, entry);
+    pool->entries = sel4osapi_list_insert_node(pool->entries, entry);
     pool->current_size++;
 
     assert(pool->current_size <= pool->size);
@@ -94,7 +94,7 @@ simple_pool_alloc_entry(simple_pool_t *pool)
 int
 simple_pool_free(simple_pool_t *pool, void *el)
 {
-    simple_list_t *entry = NULL;
+    sel4osapi_list_t *entry = NULL;
     assert(pool != NULL);
     assert(el != NULL);
 
@@ -107,14 +107,14 @@ simple_pool_free(simple_pool_t *pool, void *el)
 }
 
 int
-simple_pool_free_entry(simple_pool_t *pool, simple_list_t *entry)
+simple_pool_free_entry(simple_pool_t *pool, sel4osapi_list_t *entry)
 {
     assert(pool != NULL);
     assert(entry != NULL);
 
     /*printf("### [POOL=%x][FREE][ENTRY=%x][SIZE=%d] &&&\n", (unsigned int) pool, (unsigned int) entry, pool->current_size);*/
 
-    pool->entries = simple_list_unlink(pool->entries, entry);
+    pool->entries = sel4osapi_list_unlink(pool->entries, entry);
     pool->current_size--;
 
     assert(pool->current_size >= 0);
@@ -124,17 +124,17 @@ simple_pool_free_entry(simple_pool_t *pool, simple_list_t *entry)
         pool->init_fn(entry->el, pool->init_arg);
     }
 
-    pool->free_entries = simple_list_insert_node(pool->free_entries, entry);
+    pool->free_entries = sel4osapi_list_insert_node(pool->free_entries, entry);
 
     return 0;
 }
 
 
-simple_list_t*
+sel4osapi_list_t*
 simple_pool_find_node(simple_pool_t *pool, void *el)
 {
-    simple_list_t *cursor = pool->entries;
-    simple_list_t *entry = NULL;
+    sel4osapi_list_t *cursor = pool->entries;
+    sel4osapi_list_t *entry = NULL;
 
     while (cursor != NULL && entry == NULL)
     {

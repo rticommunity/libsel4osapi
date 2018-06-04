@@ -18,8 +18,8 @@ typedef int (*simple_pool_compare_el_fn)(void *el1, void *el2);
 
 typedef struct simple_pool
 {
-    simple_list_t *free_entries;
-    simple_list_t *entries;
+    sel4osapi_list_t *free_entries;
+    sel4osapi_list_t *entries;
     size_t el_size;
     int size;
     int current_size;
@@ -38,13 +38,13 @@ simple_pool_alloc(simple_pool_t *pool);
 int
 simple_pool_free(simple_pool_t *pool, void *el);
 
-simple_list_t*
+sel4osapi_list_t*
 simple_pool_alloc_entry(simple_pool_t *pool);
 
 int
-simple_pool_free_entry(simple_pool_t *pool, simple_list_t *entry);
+simple_pool_free_entry(simple_pool_t *pool, sel4osapi_list_t *entry);
 
-simple_list_t*
+sel4osapi_list_t*
 simple_pool_find_node(simple_pool_t *pool, void *el);
 
 int
