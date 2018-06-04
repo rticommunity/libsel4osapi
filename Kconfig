@@ -113,7 +113,7 @@ menuconfig LIB_OSAPI_SYSCLOCK
         System clock support
 
 config LIB_OSAPI_SYSCLOCK_PERIOD
-    int "Clock period"
+    int "Clock period msec"
     depends on LIB_OSAPI_SYSCLOCK
     default 5
     help
