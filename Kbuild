@@ -10,7 +10,7 @@
 
 
 libs-$(CONFIG_LIB_OSAPI) += libsel4osapi
-libsel4osapi: libsel4muslcsys libsel4 libmuslc libsel4vspace libsel4utils
+libsel4osapi: libsel4muslcsys libsel4 libmuslc libsel4vspace libsel4utils libethdrivers liblwip
 #
 # liblwip
 #
