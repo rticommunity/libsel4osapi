@@ -259,7 +259,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 syslog_trace("create socket request: client=%d, add=%s", client_id, ipaddr_ntoa(&addr));
 
                 {
-                    simple_list_t *cursor;
+                    sel4osapi_list_t *cursor;
                     sel4osapi_ipcclient_t *ncursor;
 
                     cursor = net->ipc->clients->entries;
@@ -277,7 +277,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 }
 
                 {
-                    simple_list_t *cursor, *cursor2;
+                    sel4osapi_list_t *cursor, *cursor2;
                     sel4osapi_netiface_t *ncursor;
                     sel4osapi_netvface_t *vcursor;
 
@@ -362,7 +362,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
                 syslog_trace("bind socket request: socket=%d, port=%d", socket_id, bind_port);
 
                 {
-                    simple_list_t *cursor;
+                    sel4osapi_list_t *cursor;
                     sel4osapi_udp_socket_server_t *scursor;
 
                     cursor = udp->socket_servers->entries;
@@ -712,7 +712,7 @@ sel4osapi_udp_sd_to_socket(int sd)
     sel4osapi_process_env_t *process = sel4osapi_process_get_current();
     sel4osapi_udp_interface_t *udp_iface = &process->udp_iface;
     sel4osapi_udp_socket_t *socket = NULL;
-    simple_list_t *cursor = NULL;
+    sel4osapi_list_t *cursor = NULL;
 
     assert(sd > 0);
 
