@@ -26,11 +26,11 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
 #endif
     int error = 0;
 
-    syslog_trace("ethernet driver started");
+    syslog_trace("ethernet driver started, handling IRQ #%d", iface->driver->irq_num);
     while (thread->active)
     {
         seL4_Wait(iface->irq_aep,NULL);
-        /*syslog_trace("handling IRQ %d",iface->driver->irq_num);*/
+// syslog_trace("eth IRQ");
         error = sel4osapi_mutex_lock(iface->mutex);
         assert(!error);
 
@@ -41,6 +41,7 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
         elapsed_arp_t = current_time - iface->last_checked_arp_t;
 #endif
 
+//      NOTE: handle_irq_fn is in imx6.c: handle_irq
         iface->driver->handle_irq_fn(iface->driver->state, iface->driver->irq_num);
 
 #if CLEAR_BUFFERS
@@ -58,7 +59,6 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
 
         seL4_IRQHandler_Ack(iface->irq);
         sel4osapi_mutex_unlock(iface->mutex);
-        /*syslog_trace("IRQ %d handled",iface->driver->irq_num);*/
     }
 }
 
@@ -82,9 +82,12 @@ sel4osapi_netiface_add_vface(sel4osapi_netiface_t *iface,
     vface->ip_gw = *gw;
 
     netif = netif_add(&vface->lwip_netif,
-                            addr, &vface->ip_mask, &vface->ip_gw,
-                            iface->driver->state, iface->driver->init_fn,
-                            ethernet_input);
+                      addr, 
+                      &vface->ip_mask, 
+                      &vface->ip_gw,
+                      iface->driver->state, 
+                      iface->driver->init_fn,
+                      ethernet_input);
     assert(netif);
     netif_set_up(netif);
 
