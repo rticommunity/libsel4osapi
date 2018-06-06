@@ -36,7 +36,7 @@ udprecv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, uint16_
     m = simple_pool_alloc(server->msgs);
 
     if (m == NULL) {
-        syslog_warn("discarding msg on sd=%d", server->socket.id);
+        syslog_warn("discarding msg on sd=%d, server is not running", server->socket.id);
         pbuf_free(p);
         goto notify;
     }
@@ -161,8 +161,7 @@ sel4osapi_udp_socket_rx_thread(sel4osapi_thread_info_t *thread)
         }
         assert(packet_len <= server->client->rx_buf_size);
 
-        syslog_trace("received msg [ip=%s (%d), port=%d, size=%d]",
-                            ipaddr_ntoa(&ipaddr), ipaddr.addr, port, packet_len);
+        syslog_trace("received msg [ip=%s (%d), port=%d, size=%d]", ipaddr_ntoa(&ipaddr), ipaddr.addr, port, packet_len);
 
         remaining_msgs--;
 
@@ -657,7 +656,6 @@ sel4osapi_udp_recv(sel4osapi_udp_socket_t *socket, void *msg, unsigned int max_l
     ipaddr_out->addr = 0;
     *port_out = 0;
 
-
     minfo = seL4_Recv(socket->aep_rx_data, &sender_badge);
     /* a message was received on the socket,
      * take lock on rx_buf */
@@ -675,7 +673,7 @@ sel4osapi_udp_recv(sel4osapi_udp_socket_t *socket, void *msg, unsigned int max_l
     port = mr1;
     addr.addr = mr2;
 
-    syslog_trace("receiving UDP message [ip=%s, port=%d, size=%d]", ipaddr_ntoa(&addr), port, len);
+    syslog_trace("Received UDP message [ip=%s, port=%d, size=%d]", ipaddr_ntoa(&addr), port, len);
 
     if (len > max_len)
     {
