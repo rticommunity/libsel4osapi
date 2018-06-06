@@ -84,6 +84,7 @@ sel4osapi_thread_create(
     sel4osapi_process_env_t *env = sel4osapi_process_get_current();
     sel4osapi_thread_t *thread = NULL;
     int tid;
+    int isRootTask = 0;
 
     thread = (sel4osapi_thread_t*) simple_pool_alloc(env->threads);
     assert(thread != NULL);
@@ -106,7 +107,15 @@ sel4osapi_thread_create(
     sel4utils_thread_config_t config = {0};
     config = thread_config_fault_endpoint(config, env->fault_endpoint);
     config = thread_config_cspace(config, env->root_cnode, data);
-    config = thread_config_auth(config, simple_get_tcb(sel4osapi_system_get_simple()));
+    if (sel4osapi_system_get_simple()->init_cap) {
+        // Root task
+        config = thread_config_auth(config, simple_get_tcb(sel4osapi_system_get_simple()));
+        isRootTask = 1;
+    } else {
+        config = thread_config_auth(config, env->tcb);
+    }
+
+    config = thread_config_mcp(config, (uint8_t)priority);
     config = thread_config_priority(config, (uint8_t)priority);
     config = thread_config_create_reply(config);
     error = sel4utils_configure_thread_config(vka, vspace, vspace, config, &thread->native);
@@ -134,7 +143,17 @@ sel4osapi_thread_create(
 
     syslog_info("Thread '%s' (ID=%d) created: TCB=%8p (cptr=%08x), pri=%d", name, thread->info.tid, &thread->native.tcb, thread->native.tcb.cptr, priority);
 
-    setup_fault_handler(thread);
+    if (isRootTask) {
+        // If we are not the root task, the setup_fault_handler requires to access to the
+        // simple API.
+        // THE SIMPLE API IS NOT AVAILABLE unless we are running from the root task. There is
+        // a way workaround to this if needed, but at this time having a fault handler is not
+        // that critical. In case the thread of a child process will fault, it'll be trapped
+        // by the system trap handler anyway.
+        setup_fault_handler(thread);
+    } else {
+        syslog_warn("Fault handler on threads children of spawn processes are not installed");
+    }
 
     /*env->threads_num++;*/
 
