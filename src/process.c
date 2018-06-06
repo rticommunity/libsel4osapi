@@ -205,7 +205,9 @@ sel4osapi_process_create(char *process_name, uint8_t priority)
     // Since 9.0.0 sel4utils_configure_process does not accept the priority anymore.
     // error = sel4utils_configure_process(&process->native, vka, vspace, process_name);
     sel4utils_process_config_t config = process_config_default(process_name, seL4_CapInitThreadASIDPool);
-    process_config_priority(config, priority);
+    config = process_config_auth(config, simple_get_tcb(&system->simple));
+    config = process_config_priority(config, priority);
+    config = process_config_mcp(config, priority);
     error = sel4utils_configure_process_custom(&process->native, vka, vspace, config);
     assert(error == 0);
 
