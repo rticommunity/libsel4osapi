@@ -368,6 +368,11 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     syslog_trace("Initializing logger...");
     sel4osapi_log_initialize();
 
+#if defined(CONFIG_LIB_OSAPI_NET) || defined(CONFIG_LIB_OSAPI_SERIAL) || defined(CONFIG_LIB_OSAPI_SYSCLOCK)
+    syslog_trace("Initializing I/O...");
+    sel4osapi_io_initialize(&system->io_ops);
+#endif
+
 #ifdef CONFIG_LIB_OSAPI_SYSCLOCK
     syslog_trace("Initializing sysclock...");
     sel4osapi_sysclock_initialize(&system->sysclock);
@@ -379,10 +384,6 @@ sel4osapi_system_initialize(void *bootstrap_mem_pool)
     syslog_trace("Initializing IPC Server...");
     sel4osapi_ipcserver_initialize(&system->ipc);
 
-#if defined(CONFIG_LIB_OSAPI_NET) || defined(CONFIG_LIB_OSAPI_SERIAL)
-    syslog_trace("Initializing I/O...");
-    sel4osapi_io_initialize(&system->io_ops);
-#endif
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL
     syslog_trace("Initializing serial port...");

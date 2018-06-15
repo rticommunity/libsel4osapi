@@ -118,7 +118,7 @@ typedef struct sel4osapi_system {
      */
     cspacepath_t idling_aep;
 
-#if defined(CONFIG_LIB_OSAPI_NET) || defined(CONFIG_LIB_OSAPI_SERIAL)
+#if defined(CONFIG_LIB_OSAPI_NET) || defined(CONFIG_LIB_OSAPI_SERIAL) || defined(CONFIG_LIB_OSAPI_SYSCLOCK)
     ps_io_ops_t io_ops;
 #endif
 
