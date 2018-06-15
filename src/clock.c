@@ -361,6 +361,7 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
     simple_t *simple = sel4osapi_system_get_simple();
     vspace_t *vspace = sel4osapi_system_get_vspace();
     sel4osapi_process_env_t *process = sel4osapi_process_get_current();
+    ps_io_ops_t * io_ops = sel4osapi_system_get_io_ops();
     int error = 0;
     /*int i = 0;*/
 
@@ -379,7 +380,7 @@ sel4osapi_sysclock_initialize(sel4osapi_sysclock_t *sysclock)
     assert(sysclock->schedule != NULL);
 
     // syslog_trace("Getting the_default_timer...");
-    error = sel4platsupport_init_default_timer(vka, vspace, simple, sysclock->timer_aep.cptr, &sysclock->native_timer);
+    error = sel4platsupport_init_default_timer_ops(vka, vspace, simple, *io_ops, sysclock->timer_aep.cptr, &sysclock->native_timer);
     assert(error == 0);
 
     // syslog_trace("Creating mutex");
