@@ -26,7 +26,6 @@ sel4osapi_io_initialize(ps_io_ops_t *io_ops) {
 
     error = sel4platsupport_new_io_ops(*vspace, *vka, io_ops);
     assert(error == 0);
-    // FABDEBUG - set up a default DMA manager
     error = sel4utils_new_page_dma_alloc(vka, vspace, &io_ops->dma_manager);
     assert(error == 0);
 #endif
