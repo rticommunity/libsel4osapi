@@ -104,6 +104,15 @@ menu "Process and thread support"
         	Size of TX buffer allocate to each user process (default 16k)
 endmenu
 
+config LIB_OSAPI_CUSTOM_SYNC
+    bool "Use own custom sync functions"
+    default y
+    depends on LIB_OSAPI
+    help
+        If selected, the synchronization functions (semaphore, mutex) will be based
+        on a propriertary implementation. If unselected, it will use the primitive
+        functions from seL4_libs/libsel4sync library.
+
 
 menuconfig LIB_OSAPI_SYSCLOCK
     bool "System clock support"

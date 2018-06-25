@@ -12,6 +12,9 @@
 #ifndef SEL4OSAPI_MUTEX_H_
 #define SEL4OSAPI_MUTEX_H_
 
+
+#ifdef CONFIG_LIB_OSAPI_CUSTOM_SYNC
+
 #include <sel4osapi/thread.h>
 
 /*
@@ -54,5 +57,37 @@ sel4osapi_mutex_lock(sel4osapi_mutex_t *mutex);
 int
 sel4osapi_mutex_unlock(sel4osapi_mutex_t *mutex);
 
+#else
+// *****************************************************************************
+// ** seL4_libs/libsel4sync implementation
+// *****************************************************************************
+
+#include "sync/mutex.h"
+
+extern vka_t* sel4osapi_system_get_vka();
+
+typedef sync_mutex_t sel4osapi_mutex_t;
+
+static inline sel4osapi_mutex_t *sel4osapi_mutex_create() {
+    
+    sync_mutex_t *mutex = (sync_mutex_t *) sel4osapi_heap_allocate(sizeof(sync_mutex_t));
+    assert(mutex);
+    assert(sync_mutex_new(sel4osapi_system_get_vka(), mutex) == 0);
+    return (sel4osapi_mutex_t *)mutex;
+}
+
+static inline void sel4osapi_mutex_delete(sel4osapi_mutex_t *mutex) {
+    sync_mutex_destroy(sel4osapi_system_get_vka(), (sync_mutex_t *)mutex);
+}
+
+static inline int sel4osapi_mutex_lock(sel4osapi_mutex_t *mutex) {
+    return sync_mutex_lock((sync_mutex_t *)mutex);
+}
+
+static inline int sel4osapi_mutex_unlock(sel4osapi_mutex_t *mutex) {
+    return sync_mutex_unlock((sync_mutex_t *)mutex);
+}
+
+#endif
 
 #endif /* SEL4OSAPI_MUTEX_H_ */

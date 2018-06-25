@@ -11,9 +11,11 @@
 
 #include <sel4osapi/osapi.h>
 
+#ifdef CONFIG_LIB_OSAPI_CUSTOM_SYNC
+
 #include <limits.h>
 
-#define WAIT_RESULT_OK          1
+#define WAIT_RESULT_OK          501
 
 sel4osapi_mutex_t*
 sel4osapi_mutex_create()
@@ -92,4 +94,5 @@ sel4osapi_mutex_unlock(sel4osapi_mutex_t *mutex) {
 
     return 0;
 }
+#endif
 

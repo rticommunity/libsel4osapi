@@ -11,6 +11,8 @@
 
 #include <sel4osapi/osapi.h>
 
+#ifdef CONFIG_LIB_OSAPI_CUSTOM_SYNC
+
 #define WAIT_RESULT_OK          0
 #define WAIT_RESULT_TIMEOUT     2
 
@@ -149,3 +151,5 @@ sel4osapi_semaphore_give(sel4osapi_semaphore_t* semaphore)
     sel4osapi_mutex_unlock(semaphore->mutex);
     return 0;
 }
+
+#endif
