@@ -106,7 +106,7 @@ endmenu
 
 config LIB_OSAPI_CUSTOM_SYNC
     bool "Use own custom sync functions"
-    default y
+    default n
     depends on LIB_OSAPI
     help
         If selected, the synchronization functions (semaphore, mutex) will be based
