@@ -60,9 +60,9 @@ typedef struct sel4osapi_udp_socket_server
 
 typedef enum sel4osapi_udpstack_opcode
 {
-    UDPSTACK_CREATE_SOCKET = 0,
-    UDPSTACK_BIND_SOCKET = 1,
-    UDPSTACK_CONNECT_SOCKET = 2
+    UDPSTACK_CREATE_SOCKET = 300,
+    UDPSTACK_BIND_SOCKET = 301,
+    UDPSTACK_CONNECT_SOCKET = 302
 } sel4osapi_udpstack_opcode_t;
 
 typedef struct sel4osapi_udpstack

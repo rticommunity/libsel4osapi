@@ -35,8 +35,8 @@ sel4osapi_io_initialize(ps_io_ops_t *io_ops) {
 #ifdef CONFIG_LIB_OSAPI_SERIAL
 typedef enum sel4osapi_serial_op
 {
-    SERIAL_OP_WRITE = 1,
-    SERIAL_OP_READ = 2
+    SERIAL_OP_WRITE = 201,
+    SERIAL_OP_READ = 202
 } sel4osapi_serial_op_t;
 
 void

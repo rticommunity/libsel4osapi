@@ -30,9 +30,9 @@ struct timeout_entry
 
 typedef enum sel4osapi_sysclock_opcode
 {
-    SYSCLOCK_OP_GET_TIME = 0,
-    SYSCLOCK_OP_SET_TIMEOUT = 1,
-    SYSCLOCK_OP_CANCEL_TIMEOUT = 2
+    SYSCLOCK_OP_GET_TIME = 100,
+    SYSCLOCK_OP_SET_TIMEOUT = 101,
+    SYSCLOCK_OP_CANCEL_TIMEOUT = 102
 } sel4osapi_sysclock_opcode_t;
 
 #define ENABLE_TIMEOUT_SERVER   1
