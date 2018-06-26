@@ -12,56 +12,6 @@
 #ifndef SEL4OSAPI_SEMAPHORE_H_
 #define SEL4OSAPI_SEMAPHORE_H_
 
-#ifdef CONFIG_LIB_OSAPI_CUSTOM_SYNC
-
-#include <sel4osapi/mutex.h>
-
-#define SEL4OSAPI_SEMAPHORE_QUEUE_SIZE  (SEL4OSAPI_MAX_THREADS_PER_PROCESS + 1)
-
-#define SEL4OSAPI_SEMAPHORE_TIMEOUT_INFINITE   -1
-
-/*
- * Data type representing a binary semaphore.
- */
-typedef struct sel4osapi_semaphore
-{
-    unsigned int count;
-    sel4osapi_mutex_t *mutex;
-    seL4_CPtr wait_queue[SEL4OSAPI_SEMAPHORE_QUEUE_SIZE];
-    unsigned int queued;
-} sel4osapi_semaphore_t;
-
-/*
- * Create a new semaphore.
- */
-sel4osapi_semaphore_t*
-sel4osapi_semaphore_create(int init);
-
-/*
- * Delete a semaphore.
- */
-void
-sel4osapi_semaphore_delete(sel4osapi_semaphore_t* semaphore);
-
-/*
- * Take the semaphore or block up to the specified timeout.
- * Currently only timeout=0 is supported. Other values will
- * be ignored.
- */
-int
-sel4osapi_semaphore_take(sel4osapi_semaphore_t* semaphore, int32_t timeout);
-
-/*
- * Give the semaphore.
- */
-int
-sel4osapi_semaphore_give(sel4osapi_semaphore_t* semaphore);
-
-#else
-// *****************************************************************************
-// ** seL4_libs/libsel4sync implementation
-// *****************************************************************************
-
 #include "sync/sem.h"
 
 extern vka_t* sel4osapi_system_get_vka();
@@ -85,7 +35,6 @@ static inline int sel4osapi_semaphore_take(sel4osapi_semaphore_t* sem, UNUSED in
 static inline int sel4osapi_semaphore_give(sel4osapi_semaphore_t* sem) {
     return sync_sem_post(sem);
 }
-#endif
 
 
 
