@@ -57,6 +57,7 @@ typedef enum sel4osapi_loglevel
 
 extern sel4osapi_loglevel_t sel4osapi_gv_loglevel;
 extern sel4osapi_mutex_t  * sel4osapi_gv_logmutex;
+extern int sel4osapi_logconsole;
 
 /*
  * Start monitoring a thread's status by
@@ -66,8 +67,8 @@ extern sel4osapi_mutex_t  * sel4osapi_gv_logmutex;
 int
 sel4osapi_syslog_monitor_thread(sel4osapi_thread_t *thread);
 
-
 #if 1
+/*
 #define __syslog_logMessage(msg, level, levelStr, ...) \
     if (sel4osapi_gv_loglevel >= level) { \
         if (sel4osapi_gv_logmutex) { \
@@ -82,7 +83,14 @@ sel4osapi_syslog_monitor_thread(sel4osapi_thread_t *thread);
 #define syslog_trace(msg, ...)  __syslog_logMessage(msg, SEL4OSAPI_LOG_LEVEL_TRACE, "TRACE", ##__VA_ARGS__)
 #define syslog_info(msg, ...)   __syslog_logMessage(msg, SEL4OSAPI_LOG_LEVEL_INFO,  "INFO",  ##__VA_ARGS__)
 #define syslog_warn(msg, ...)   __syslog_logMessage(msg, SEL4OSAPI_LOG_LEVEL_WARN,  "WARN",  ##__VA_ARGS__)
-#define syslog_error(msg, ...)  __syslog_logMessage(msg, SEL4OSAPI_LOG_LEVEL_ERROR, "ERROR", ##__VA_ARGS__)
+*/
+
+extern void __syslog_logMessage(sel4osapi_loglevel_t level, const char *levelStr, const char *function, const char *msg, ...);
+
+#define syslog_trace(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_TRACE, "TRACE", __FUNCTION__, msg, ##__VA_ARGS__)
+#define syslog_info(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_INFO,  "INFO",  __FUNCTION__, msg, ##__VA_ARGS__)
+#define syslog_warn(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_WARN,  "WARN",  __FUNCTION__, msg, ##__VA_ARGS__)
+#define syslog_error(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_ERROR, "ERROR", __FUNCTION__, msg, ##__VA_ARGS__)
 
 #else
 
@@ -145,5 +153,14 @@ sel4osapi_log_lock();
 
 void
 sel4osapi_log_unlock();
+
+
+static inline void sel4osapi_log_set_console(int logConsole) {
+    syslog_info("================================");
+    syslog_info("Switching logging console...");
+    syslog_info("================================");
+    sel4osapi_logconsole = logConsole;
+    syslog_info("Logging continue on secondary console...");
+}
 
 #endif /* SEL4OSAPI_LOG_H_ */
