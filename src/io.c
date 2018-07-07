@@ -15,7 +15,12 @@
 
 #include <sel4platsupport/platsupport.h>
 
+#include <platsupport/serial.h>
+#include <platsupport/chardev.h>
+
 #include <string.h>
+
+
 
 void
 sel4osapi_io_initialize(ps_io_ops_t *io_ops) {
@@ -36,7 +41,8 @@ sel4osapi_io_initialize(ps_io_ops_t *io_ops) {
 typedef enum sel4osapi_serial_op
 {
     SERIAL_OP_WRITE = 201,
-    SERIAL_OP_READ = 202
+    SERIAL_OP_READ = 202,
+    SERIAL_OP_CONFIG = 203
 } sel4osapi_serial_op_t;
 
 void
@@ -51,14 +57,12 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
     sel4osapi_serialdevice_t devid = 0;
     uint32_t op_size = 0;
     sel4osapi_serialclient_t *client = NULL;
-    int op_result;
     ps_chardevice_t *device = NULL;
 
-    syslog_info("started serving requests...");
+    syslog_trace("started serving requests...");
 
     while (thread->active)
     {
-            syslog_info("waiting for next request...");
             minfo = seL4_Recv(server->server_ep, &sender_badge);
             assert(seL4_MessageInfo_get_length(minfo) == 4);
             mr0 = seL4_GetMR(0);
@@ -69,10 +73,6 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
             client_id = mr0;
             opcode = mr1;
             devid = mr2;
-            op_size = mr3;
-
-            syslog_info("new serial request: client=%d, op=%d, dev=%d, size=%d",
-                            client_id, opcode, devid, op_size);
 
             sel4osapi_list_t *cursor = server->clients->entries;
             while (cursor != NULL)
@@ -91,7 +91,6 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
             switch (devid) {
                 case SERIAL_DEV_UART1:
                     device = &server->uart1;
-                    /* UART1 not currently supported (TODO is it?) */
                     break;
                 case SERIAL_DEV_UART2:
                     device = &server->uart2;
@@ -103,26 +102,55 @@ sel4osapi_serial_server_thread(sel4osapi_thread_info_t *thread)
             assert(device);
 
             switch (opcode) {
-                case SERIAL_OP_WRITE:
-
-                    op_result = ps_cdev_write(device,client->buf, op_size, NULL, NULL);
-
-                    mr0 = op_result;
+                case SERIAL_OP_WRITE: {
+                    int i;
+                    op_size = mr3;
+                    for (i = 0; i < op_size; ++i) {
+                        ps_cdev_putchar(device, ((char *)client->buf)[i]);
+                    }
+                    mr0 = op_size;
                     minfo = seL4_MessageInfo_new(0,0,0,1);
                     seL4_SetMR(0, mr0);
                     seL4_Reply(minfo);
-
                     break;
-                case SERIAL_OP_READ:
+                }
 
-                    op_result = ps_cdev_read(device,client->buf, op_size, NULL, NULL);
+                case SERIAL_OP_READ: {
+                    int i;
+                    int ret = EOF;
+                    uint32_t tStart, tNow;
+                    op_size = mr3;
+                    size_t timeout = *((size_t *)client->buf);
+                    tStart = sel4osapi_sysclock_get_time();
+                    for (i = 0; i < op_size; ++i) {
+                        while (ret == EOF) {
+                            tNow = sel4osapi_sysclock_get_time();
+                            if ((timeout > 0) && ((tNow - tStart) > timeout)) {
+                                break;
+                            }
+                            ret = ps_cdev_getchar(device);
+                        }
+                        if (ret == EOF) {
+                            break;
+                        }
+                        ((char *)(client->buf))[i] = ret;
+                    }
 
-                    mr0 = op_result;
+                    mr0 = i;
                     minfo = seL4_MessageInfo_new(0,0,0,1);
                     seL4_SetMR(0, mr0);
                     seL4_Reply(minfo);
-
                     break;
+                }
+                case SERIAL_OP_CONFIG: {
+                    sel4osapi_serial_config_t *config = (sel4osapi_serial_config_t *)client->buf;
+                    mr0 = serial_configure(device, config->bps, config->char_size, config->parity, config->stop_bit);
+                    minfo = seL4_MessageInfo_new(0,0,0,1);
+                    seL4_SetMR(0, mr0);
+                    seL4_Reply(minfo);
+                    break;
+                }
+
             }
     }
 
@@ -162,16 +190,19 @@ sel4osapi_io_serial_write(sel4osapi_serialdevice_t dev, void *data, uint32_t siz
 }
 
 int
-sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size)
+sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size, size_t timeout)
 {
     seL4_MessageInfo_t minfo;
     seL4_Word mr0, mr1, mr2, mr3;
     sel4osapi_process_env_t *process = sel4osapi_process_get_current();
     sel4osapi_serialclient_t *client = &process->serial;
+    size_t *ptrTimeout;
 
     assert(size <= client->buf_size);
 
     sel4osapi_semaphore_take(client->buf_avail, 0);
+    ptrTimeout = (size_t *)client->buf;
+    *ptrTimeout = timeout;
 
     mr0 = client->id;
     mr1 = SERIAL_OP_READ;
@@ -192,6 +223,44 @@ sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size
         memcpy(data, client->buf, mr0);
     }
 
+    sel4osapi_semaphore_give(client->buf_avail);
+
+    return mr0;
+}
+
+int
+sel4osapi_io_serial_configure(sel4osapi_serialdevice_t dev, 
+        long bps,
+        int  char_size,
+        enum sel4osapi_serial_parity parity,
+        int  stop_bit)
+{
+    seL4_MessageInfo_t minfo;
+    seL4_Word mr0, mr1, mr2, mr3;
+    sel4osapi_process_env_t *process = sel4osapi_process_get_current();
+    sel4osapi_serialclient_t *client = &process->serial;
+    sel4osapi_serial_config_t *config;
+
+    sel4osapi_semaphore_take(client->buf_avail, 0);
+    config = (sel4osapi_serial_config_t *)client->buf;
+    config->bps = bps;
+    config->char_size = char_size;
+    config->parity = (enum serial_parity)parity;
+    config->stop_bit = stop_bit;
+
+    mr0 = client->id;
+    mr1 = SERIAL_OP_CONFIG;
+    mr2 = dev;
+    mr3 = sizeof(sel4osapi_serial_config_t);
+    seL4_SetMR(0, mr0);
+    seL4_SetMR(1, mr1);
+    seL4_SetMR(2, mr2);
+    seL4_SetMR(3, mr3);
+    minfo = seL4_MessageInfo_new(0,0,0,4);
+
+    minfo = seL4_Call(client->server_ep, minfo);
+    assert(seL4_MessageInfo_get_length(minfo) == 1);
+    mr0 = seL4_GetMR(0);
     sel4osapi_semaphore_give(client->buf_avail);
 
     return mr0;
@@ -240,6 +309,8 @@ sel4osapi_io_serial_initialize(sel4osapi_serialserver_t *server, int priority)
     /*Open serial port one */
     chardev = ps_cdev_init(PS_SERIAL0, io_ops, &server->uart1);
     assert(chardev);
+    //serial_configure(chardev, 9600, 8, PARITY_ODD, 1);
+    
 #endif
 
 #ifdef CONFIG_LIB_OSAPI_SERIAL_UART2

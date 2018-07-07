@@ -13,6 +13,15 @@
 #define SEL4OSAPI_IO_H_
 
 
+// To avoid to expose the internal of the serial port, we redefine those constants
+// here. Those values must match the enums in: util_libs/libplatsupport/include/platsupport/serial.h
+enum sel4osapi_serial_parity {
+    SEL4OSAPI_SERIAL_PARITY_NONE,
+    SEL4OSAPI_SERIAL_PARITY_EVEN,
+    SEL4OSAPI_SERIAL_PARITY_ODD,
+};
+
+
 void
 sel4osapi_io_initialize(ps_io_ops_t *io_ops);
 
@@ -26,6 +35,13 @@ typedef enum sel4osapi_serialdevice
     SERIAL_DEV_UART1 = 1,
     SERIAL_DEV_UART2 = 2
 } sel4osapi_serialdevice_t;
+
+typedef struct sel4osapi_serial_config {
+    long bps;
+    int  char_size;
+    enum sel4osapi_serial_parity parity;
+    int  stop_bit;
+} sel4osapi_serial_config_t;
 
 typedef struct sel4osapi_serialclient
 {
@@ -57,8 +73,15 @@ int
 sel4osapi_io_serial_write(sel4osapi_serialdevice_t dev, void *data, uint32_t size);
 
 int
-sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size);
-#endif
+sel4osapi_io_serial_read(sel4osapi_serialdevice_t dev, void *data, uint32_t size, size_t timeout);
 
+int
+sel4osapi_io_serial_configure(sel4osapi_serialdevice_t dev, 
+        long bps,
+        int  char_size,
+        enum sel4osapi_serial_parity parity,
+        int  stop_bit);
+
+#endif
 
 #endif /* SEL4OSAPI_IO_H_ */
