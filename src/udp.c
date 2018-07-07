@@ -346,7 +346,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
 
                 syslog_trace("new socket created: sd=%d, addr=%s, client=%d",
                         socket_server->socket.id, ipaddr_ntoa(&socket_server->socket.addr),
-                        socket_server->client->id)
+                        socket_server->client->id);
 
                 break;
             }
@@ -425,7 +425,7 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
 
                 syslog_trace("socket bound: sd=%d, addr=%s, port=%d, client=%d",
                         socket_server->socket.id, ipaddr_ntoa(&socket_server->socket.addr),
-                        socket_server->socket.port, socket_server->client->id)
+                        socket_server->socket.port, socket_server->client->id);
 
                 vka_cspace_alloc(vka, &rx_ready_ep_mint);
                 assert(rx_ready_ep_mint != seL4_CapNull);

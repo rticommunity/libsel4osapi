@@ -180,7 +180,7 @@ sel4osapi_network_initialize(sel4osapi_netstack_t *net, sel4osapi_ipcserver_t *i
 
     net->ipc = ipc;
 
-    syslog_info("initializing network interface [%s, irq=%d]", iface_name, iface_driver->irq_num)
+    syslog_info("initializing network interface [%s, irq=%d]", iface_name, iface_driver->irq_num);
 
     iface = sel4osapi_network_create_interface(net, iface_name, iface_driver);
     assert(iface);
