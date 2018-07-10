@@ -12,6 +12,12 @@
 #ifndef SEL4OSAPI_THREAD_H_
 #define SEL4OSAPI_THREAD_H_
 
+#define SEL4OSAPI_THREAD_NAME_PREFIX_MAX_LEN    10
+
+#if SEL4OSAPI_THREAD_NAME_PREFIX_MAX_LEN >= SEL4OSAPI_THREAD_NAME_MAX_LEN
+#error "SEL4OSAPI_THREAD_NAME_MAX_LEN must be greater than SEL4OSAPI_THREAD_NAME_PREFIX_MAX_LEN"
+#endif
+
 /*
  * Data structure containing all contextual
  * information pertaining a thread.
@@ -25,7 +31,7 @@ typedef struct sel4osapi_thread_info
     /*
      * Name of the thread.
      */
-    char name[SEL4OSAPI_THREAD_NAME_MAX_LEN];
+    char name[SEL4OSAPI_THREAD_NAME_MAX_LEN - SEL4OSAPI_THREAD_NAME_PREFIX_MAX_LEN];
     /*
      * Argument passed to the thread
      */

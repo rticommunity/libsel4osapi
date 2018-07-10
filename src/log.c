@@ -13,6 +13,8 @@
 
 #include <stdarg.h>
 
+#define SEL4OSAPI_MONITOR_THREAD_NAME_PREFIX        "syslog::"
+
 sel4osapi_mutex_t * sel4osapi_gv_logmutex = NULL;
 
 sel4osapi_loglevel_t sel4osapi_gv_loglevel = SEL4OSAPI_LOG_LEVEL_INFO;
@@ -43,7 +45,12 @@ sel4osapi_syslog_monitor_thread(sel4osapi_thread_t *thread)
     char monitoring_name[SEL4OSAPI_THREAD_NAME_MAX_LEN];
     int error = 0;
 
-    snprintf(monitoring_name, SEL4OSAPI_THREAD_NAME_MAX_LEN, "syslog::%s",thread->info.name);
+    snprintf(monitoring_name,
+            SEL4OSAPI_THREAD_NAME_MAX_LEN,
+            "%s%s",
+            SEL4OSAPI_MONITOR_THREAD_NAME_PREFIX,
+            thread->info.name);
+
     monitoring = sel4osapi_thread_create(monitoring_name, sel4osapi_syslog_monitoring_thread,thread,thread->info.priority);
     assert(monitoring != NULL);
     error = sel4osapi_thread_start(monitoring);
