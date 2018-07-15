@@ -107,7 +107,12 @@ static inline void __syslog_outMessage(char *buf, size_t len) {
 }
 
 
-void __syslog_logMessage(sel4osapi_loglevel_t level, const char *levelStr, const char *function, const char *msg, ...) {
+void __syslog_logMessage(sel4osapi_loglevel_t level,
+                         const char *levelStr,
+                         const char *file,
+                         const char *function,
+                         const int line,
+                         const char *msg, ...) {
     static char buffer[SYSLOG_BUFFER_MAX_SIZE];
     va_list ap;
     size_t len;
@@ -115,13 +120,19 @@ void __syslog_logMessage(sel4osapi_loglevel_t level, const char *levelStr, const
         va_start(ap, msg);
         if (sel4osapi_gv_logmutex) {
             sel4osapi_log_lock();
-            len = snprintf(buffer, SYSLOG_BUFFER_MAX_SIZE, "[%s][%03d][%s][%5s] ", 
+            len = snprintf(buffer, SYSLOG_BUFFER_MAX_SIZE, "[%s][%03d][%s:%d][%s][%5s] ",
                     sel4osapi_thread_get_current()->name,
                     sel4osapi_thread_get_current()->priority,
+                    strlen(file) > 30?file+(strlen(file)-30):file,
+                    line,
                     function,
                     levelStr);
         } else {
-            len = snprintf(buffer, SYSLOG_BUFFER_MAX_SIZE, "[N/A][0][%s][%5s] ", function, levelStr);
+            len = snprintf(buffer, SYSLOG_BUFFER_MAX_SIZE, "[N/A][0][%s:%d][%s][%5s] ",
+                            strlen(file) > 30?file+(strlen(file)-30):file,
+                            line,
+                            function,
+                            levelStr);
         }
 
         len += vsnprintf(buffer+len, SYSLOG_BUFFER_MAX_SIZE - len, msg, ap);

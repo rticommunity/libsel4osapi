@@ -31,12 +31,9 @@ udprecv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, uint16_
     int error = sel4osapi_mutex_lock(server->msgs_mutex);
     assert(!error);
 
-    syslog_trace("new message on sd=%d", server->socket.id);
-
     m = simple_pool_alloc(server->msgs);
 
     if (m == NULL) {
-        syslog_warn("discarding msg on sd=%d, server is not running", server->socket.id);
         pbuf_free(p);
         goto notify;
     }
@@ -382,6 +379,8 @@ sel4osapi_udp_stack_thread(sel4osapi_thread_info_t *thread)
 
                 socket_server->msgs = simple_pool_new(SEL4OSAPI_UDP_MAX_MSGS_PER_CLIENT, sizeof(sel4osapi_udp_message_t), NULL, NULL, NULL);
                 assert(socket_server->msgs);
+                syslog_trace("UDP receive pool size: %d",
+                        SEL4OSAPI_UDP_MAX_MSGS_PER_CLIENT);
 
                 socket_server->msgs_mutex = sel4osapi_mutex_create();
                 assert(socket_server->msgs_mutex);

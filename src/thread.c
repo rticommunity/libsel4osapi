@@ -141,7 +141,7 @@ sel4osapi_thread_create(
     thread->info.wait_aep = thread->thread_aep.cptr;
     thread->info.ipc = (seL4_IPCBuffer*) thread->native.ipc_buffer_addr;
 
-    syslog_info("Thread '%s' (ID=%d) created: TCB=%8p (cptr=%08x), pri=%d", name, thread->info.tid, &thread->native.tcb, thread->native.tcb.cptr, priority);
+    syslog_trace("Thread '%s' (ID=%d) created: TCB=%8p (cptr=%08x), pri=%d", name, thread->info.tid, &thread->native.tcb, thread->native.tcb.cptr, priority);
 
     if (isRootTask) {
         // If we are not the root task, the setup_fault_handler requires to access to the
@@ -152,7 +152,7 @@ sel4osapi_thread_create(
         // by the system trap handler anyway.
         setup_fault_handler(thread);
     } else {
-        syslog_warn("Fault handler on threads children of spawn processes are not installed");
+        syslog_trace("Fault handler on threads children of spawn processes are not installed");
     }
 
     /*env->threads_num++;*/

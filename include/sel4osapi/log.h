@@ -85,12 +85,19 @@ sel4osapi_syslog_monitor_thread(sel4osapi_thread_t *thread);
 #define syslog_warn(msg, ...)   __syslog_logMessage(msg, SEL4OSAPI_LOG_LEVEL_WARN,  "WARN",  ##__VA_ARGS__)
 */
 
-extern void __syslog_logMessage(sel4osapi_loglevel_t level, const char *levelStr, const char *function, const char *msg, ...);
+#define SEL4OSAPI_DEFAULT_ARGS      __FILE__,__FUNCTION__, __LINE__
 
-#define syslog_trace(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_TRACE, "TRACE", __FUNCTION__, msg, ##__VA_ARGS__)
-#define syslog_info(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_INFO,  "INFO",  __FUNCTION__, msg, ##__VA_ARGS__)
-#define syslog_warn(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_WARN,  "WARN",  __FUNCTION__, msg, ##__VA_ARGS__)
-#define syslog_error(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_ERROR, "ERROR", __FUNCTION__, msg, ##__VA_ARGS__)
+extern void __syslog_logMessage(sel4osapi_loglevel_t level,
+                                const char *levelStr,
+                                const char *file,
+                                const char *function,
+                                const int line,
+                                const char *msg, ...);
+
+#define syslog_trace(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_TRACE, "TRACE", SEL4OSAPI_DEFAULT_ARGS, msg, ##__VA_ARGS__)
+#define syslog_info(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_INFO,  "INFO",  SEL4OSAPI_DEFAULT_ARGS, msg, ##__VA_ARGS__)
+#define syslog_warn(msg, ...)   __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_WARN,  "WARN",  SEL4OSAPI_DEFAULT_ARGS, msg, ##__VA_ARGS__)
+#define syslog_error(msg, ...)  __syslog_logMessage(SEL4OSAPI_LOG_LEVEL_ERROR, "ERROR", SEL4OSAPI_DEFAULT_ARGS, msg, ##__VA_ARGS__)
 
 #else
 
