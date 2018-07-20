@@ -25,6 +25,11 @@ sel4osapi_eth_irq1_thread(sel4osapi_thread_info_t *thread)
     uint32_t elapsed_ip_t = 0, elapsed_arp_t = 0;
 #endif
     int error = 0;
+   
+    /* Manually notify IRQ endpoint to prevent blocking forever on it, 
+       if the kernel fails to notify the first IRQ (i.e. prints "Undelivered IRQ NNN")*/
+    seL4_MessageInfo_t msg = seL4_MessageInfo_new(0, 0, 0, 1);
+    seL4_Send(iface->irq_aep, msg);
 
     syslog_trace("ethernet driver started, handling IRQ #%d", iface->driver->irq_num);
     while (thread->active)
