@@ -2,6 +2,15 @@
 
 A library for the provisioning of basic system services on seL4.
 
+# IMPORTANT BRANCH INFO
+This branch (`micro2-sabre`) contains the libsel4osapi with the following features:
+* Built on top of seL4 version 11.0.0-dev 
+* Tested/target device: iMX6 (SabreLite)
+* Use the companion libsel4osapi-workspace branch `micro2-sabre` to use this
+  version.
+
+
+-----------------------------------------------------
 # Table of Contents
 
 * [Introduction](#introduction)
